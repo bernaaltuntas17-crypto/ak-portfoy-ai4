@@ -7,7 +7,7 @@ import glob
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
 API_KEY = "AIzaSyCSMiscWlLT0N1AFU50q8kEdHndls5UNiU"
-genai.configure(api_key=API_KEY)
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 st.set_page_config(page_title="Ak Portföy | Analiz Platformu", layout="wide", initial_sidebar_state="expanded")
 
