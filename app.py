@@ -73,6 +73,7 @@ with st.sidebar:
 if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
+            # DETAYLI ANALİZ TALİMATI (SENİN İSTEDİĞİN GİBİ)
             prompt = f"""
             Sen Ak Portföy'de Kıdemli Yatırım Uzmanısın. Müşterinin {amount_val} TL tutarındaki yatırımı için, 
             {ans_risk} risk profili, {ans_sektor} sektörü, {ans_likidite} likidite ve {ans_faiz} tercihlerine özel DERİN ANALİZ yap. 
@@ -82,9 +83,20 @@ if df is not None:
             3. Seçtiğin sektörün ({ans_sektor}) Ak Portföy stratejisindeki önemini anlat.
             Veriler: {df.to_string()}
             """
+            
+            # 404 HATASINI ÇÖZEN DOĞRUDAN BAĞLANTI
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+            
             try:
                 response = requests.post(url, headers={'Content-Type': 'application/json'}, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30)
                 if response.status_code == 200:
                     ai_text = response.json()['candidates'][0]['content']['parts'][0]['text']
-                    st.
+                    st.subheader(T['report'])
+                    st.info(ai_text)
+                    st.balloons()
+                else:
+                    st.error(f"📡 API Hatası: {response.status_code}. Lütfen API Anahtarınızın 'AIzaSy' ile başladığından emin olun.")
+            except Exception as e:
+                st.error(f"Bağlantı koptu: {e}")
+else:
+    st.error("⚠️ Veri dosyası bulunamadı!")
