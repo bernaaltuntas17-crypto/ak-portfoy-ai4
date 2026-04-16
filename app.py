@@ -82,7 +82,7 @@ if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             try:
-                # KESİN ÇÖZÜM: Kütüphane sürümüyle uyumsuzluk yaşamamak için eski ve stabil modele geçildi
+                # KESİN VE TEK ÇÖZÜM: Sadece en stabil model olan gemini-pro'yu kullanıyoruz.
                 model = genai.GenerativeModel('gemini-pro')
                 
                 # YAPAY ZEKAYA GİDEN ÇOK DETAYLI ANALİZ TALİMATI
