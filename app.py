@@ -10,7 +10,7 @@ genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
-# Ak Portföy KIRMIZI VE KOYU PANEL Teması
+# Ak Portföy KIRMIZI VE KOYU PANEL Teması (CSS)
 st.markdown("""
 <style>
     .main { background-color: #ffffff; }
@@ -40,7 +40,7 @@ def load_and_clean_data():
 
 df = load_and_clean_data()
 
-# --- 3. TAM DİL DESTEĞİ (Sözlük) ---
+# --- 3. TAM DİL DESTEĞİ ---
 lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
 
 if lang == "Almanca":
@@ -57,12 +57,12 @@ if lang == "Almanca":
         "sektor": "Bevorzugter Sektor",
         "tutar": "Investitionsbetrag",
         "wait": "Strategie wird erstellt...",
-        "report_head": "📋 Personalisierter Strategischer Analysebericht",
-        "info": "Bitte wählen Sie Ihre Kriterien und klicken Sie auf 'Analyse Starten'.",
+        "report_head": "📋 Strategischer Analysebericht",
+        "info": "Bitte wählen Sie Ihre Kriterien.",
         "prompt_lang": "Write the entire report in GERMAN."
     }
-    sektor_options = ["Technologie & KI", "Nachhaltigkeit & Grüne Energie", "Edelmetalle & Rohstoffe", "Immobilienfonds (GYF)", "Keine Präferenz"]
-    para_options = ["Türkische Lira (TL)", "US-Dollar (USD)", "Euro (EUR)", "Pfund (GBP)"]
+    sektor_options = ["Technologie & KI", "Nachhaltigkeit", "Rohstoffe", "Immobilienfonds", "Keine Präferenz"]
+    para_options = ["Türkische Lira (TL)", "US-Dollar (USD)", "Euro (EUR)", "Pound (GBP)"]
     faiz_options = ["Zinsfrei", "Zinsbasiert"]
     risk_options = ["Konservativ", "Ausgewogen", "Aggressiv"]
 else:
@@ -80,10 +80,10 @@ else:
         "tutar": "Yatırım Tutarı",
         "wait": "Strateji Oluşturuluyor...",
         "report_head": "📋 Kişiselleştirilmiş Stratejik Analiz Raporu",
-        "info": "Lütfen kriterlerinizi belirledikten sonra sol taraftaki 'Analizi Başlat' butonuna tıklayın.",
+        "info": "Lütfen sol taraftan kriterlerinizi belirleyip Analizi Başlat'a tıklayın.",
         "prompt_lang": "Raporun tamamını TÜRKÇE yaz."
     }
-    sektor_options = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik ve Yeşil Enerji", "Değerli Madenler ve Emtialar", "Gayrimenkul Yatırım Fonları", "Tercih Ettiğim Bir Sektör Yok"]
+    sektor_options = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik", "Değerli Madenler", "Gayrimenkul Fonları", "Tercih Ettiğim Bir Sektör Yok"]
     para_options = ["Türk Lirası (TL)", "ABD Doları (USD)", "Euro (EUR)", "Pound (GBP)"]
     faiz_options = ["Faizsiz", "Faizli"]
     risk_options = ["Korumalı", "Dengeli", "Agresif"]
@@ -92,7 +92,7 @@ else:
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
     try: st.image("logo.png", width=300)
-    except: st.write("Logo...")
+    except: st.write("")
 
 st.markdown(f"""
     <div style="text-align: center; padding-bottom: 20px;">
@@ -116,21 +116,10 @@ with st.sidebar:
     st.divider()
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 6. ANALİZ VE RAPOR ---
+# --- 6. ANALİZ VE RAPOR (HATA GİDERİLMİŞ KISIM) ---
 if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            prompt = f"""
-            {T['prompt_lang']}
-            Role: Financial Analyst. 
-            Data: {df.to_string()}
-            User Profile: Amount: {amount}, Currency: {ans_para}, Liquidity: {ans_likidite}, 
-            Interest: {ans_faiz}, Period: {ans_vade}, Risk: {ans_risk}, Sector: {ans_sektor}.
-            Provide a professional investment strategy.
-            """
-            res = model.generate_content(prompt)
-            st.subheader(T['report_head'])
-            st.info(res.text)
-    else:
-        st.info(T['info'])
+            try:
+                # Modeli daha sağlam bir şekilde seçiyoruz
+                model = genai.GenerativeModel('models
