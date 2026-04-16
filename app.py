@@ -6,9 +6,8 @@ import os
 import glob
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
-# Secrets kontrolü
 if "GEMINI_API_KEY" not in st.secrets:
-    st.error("⚠️ API Anahtarı Streamlit Secrets'a eklenmemiş!")
+    st.error("⚠️ API Anahtarı Bulunamadı!")
     st.stop()
 
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -51,10 +50,10 @@ lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
 if lang == "Almanca":
     T = {
         "head": "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
-        "sub": "KI-Gesteuerte Investment-Plattform der nächsten Generation",
+        "sub": "KI-Gesteuerte Investment-Plattform",
         "btn": "Analyse Starten", "sidebar_head": "Anlagepräferenzen",
         "likidite": "Liquiditätspräferenz", "para": "Währung", "faiz": "Zinssensitivität",
-        "vade": "Laufzeit", "risk": "Risikopräferenz", "sektor": "Bevorzugter Sektor", "tutar": "Investitionsbetrag",
+        "vade": "Laufzeit", "risk": "Risikopräferenz", "sektor": "Sektor", "tutar": "Investition",
         "wait": "Strategie wird erstellt...", "report_head": "📋 Strategischer Analysebericht",
         "info": "Bitte wählen Sie Ihre Kriterien.", "prompt_lang": "Write in GERMAN."
     }
@@ -68,7 +67,7 @@ else:
         "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi",
         "btn": "Analizi Başlat", "sidebar_head": "Yatırım Tercihleri",
         "likidite": "Likidite Tercihi", "para": "Para Birimi", "faiz": "Faiz Hassasiyeti",
-        "vade": "Vade Süresi", "risk": "Risk Tercihi", "sektor": "Yatırım Sektörü", "tutar": "Yatırım Tutarı",
+        "vade": "Vade Süresi", "risk": "Risk Tercihi", "sektor": "Sektör", "tutar": "Yatırım Tutarı",
         "wait": "Yapay Zeka Analiz Yapıyor...", "report_head": "📋 Stratejik Analiz Raporu",
         "info": "Lütfen kriterlerinizi belirleyip Analizi Başlat'a tıklayın.", "prompt_lang": "TÜRKÇE yaz."
     }
@@ -110,31 +109,28 @@ if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             try:
-                # Modeli en güvenli yoldan çağırıyoruz
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # --- MODELİ OTOMATİK BULAN DİNAMİK KOD ---
+                # Mevcut modelleri listele ve içinden en uygun olanı seç
+                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                # 'flash' içeren varsa onu al, yoksa ilk modeli al
+                working_model = next((m for m in models if "flash" in m), models[0])
+                
+                model = genai.GenerativeModel(working_model)
                 
                 prompt = f"""
-                {T['prompt_lang']} Bir Portföy Analisti olarak profesyonel bir rapor yaz.
+                {T['prompt_lang']} Bir Portföy Analisti olarak rapor yaz.
                 Veriler: {df.to_string()}
                 Profil: {amount} {ans_para}, Vade: {ans_vade}, Risk: {ans_risk}, Sektör: {ans_sektor}.
                 """
                 res = model.generate_content(prompt)
-                
-                if res.text:
-                    st.subheader(T['report_head'])
-                    st.info(res.text)
-                else:
-                    st.warning("⚠️ Yapay zeka şu an cevap üretemedi, lütfen tekrar deneyin.")
+                st.subheader(T['report_head'])
+                st.info(res.text)
 
             except Exception as e:
                 error_str = str(e)
                 if "429" in error_str:
                     st.warning("⚠️ Sunucu çok yoğun! Lütfen 30 saniye bekleyip tekrar deneyin.")
-                elif "API_KEY_INVALID" in error_str:
-                    st.error("🔑 API Anahtarı geçersiz! Lütfen Secrets kısmını kontrol edin.")
                 else:
-                    # Sunumda hata çıkarsa hocaya "Bağlantı tazelemem gerekiyor" demek için:
-                    st.error(f"📡 Bağlantı yenileniyor... (Hata: {error_str[:50]})")
-                    st.button("Bağlantıyı Yenile")
+                    st.error(f"📡 Bağlantı yenileniyor... (Hata: {error_str})")
     else:
         st.info(T['info'])
