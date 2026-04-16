@@ -52,17 +52,10 @@ if lang == "Almanca":
         "sub": "KI-Gesteuerte Investment-Plattform der nächsten Generation",
         "btn": "Analyse Starten",
         "sidebar_head": "Anlagepräferenzen",
-        "likidite": "Liquiditätspräferenz",
-        "para": "Währung",
-        "faiz": "Zinssensitivität",
-        "vade": "Laufzeit",
-        "risk": "Risikopräferenz",
-        "sektor": "Bevorzugter Sektor",
-        "tutar": "Investitionsbetrag",
-        "wait": "KI erstellt die Strategie...",
-        "report_head": "📋 Strategischer Analysebericht",
-        "info": "Bitte wählen Sie Ihre Kriterien.",
-        "prompt_lang": "Write the entire report in GERMAN."
+        "likidite": "Liquiditätspräferenz", "para": "Währung", "faiz": "Zinssensitivität",
+        "vade": "Laufzeit", "risk": "Risikopräferenz", "sektor": "Bevorzugter Sektor", "tutar": "Investitionsbetrag",
+        "wait": "Strategie wird erstellt...", "report_head": "📋 Strategischer Analysebericht",
+        "info": "Bitte wählen Sie Ihre Kriterien.", "prompt_lang": "Write the report in GERMAN."
     }
     sektor_options = ["Technologie & KI", "Nachhaltigkeit", "Rohstoffe", "Immobilienfonds", "Keine Präferenz"]
     para_options = ["Türkische Lira (TL)", "US-Dollar (USD)", "Euro (EUR)", "Pound (GBP)"]
@@ -74,17 +67,10 @@ else:
         "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi",
         "btn": "Analizi Başlat",
         "sidebar_head": "Yatırım Tercihleri",
-        "likidite": "Likidite Tercihi",
-        "para": "Para Birimi",
-        "faiz": "Faiz Hassasiyeti",
-        "vade": "Vade Süresi Tercihi",
-        "risk": "Risk Tercihi",
-        "sektor": "Yatırım için Tercih Edilecek Sektör",
-        "tutar": "Yatırım Tutarı",
-        "wait": "Yapay Zeka Strateji Oluşturuyor...",
-        "report_head": "📋 Kişiselleştirilmiş Stratejik Analiz Raporu",
-        "info": "Lütfen sol taraftan kriterlerinizi belirleyip Analizi Başlat'a tıklayın.",
-        "prompt_lang": "Raporun tamamını TÜRKÇE yaz."
+        "likidite": "Likidite Tercihi", "para": "Para Birimi", "faiz": "Faiz Hassasiyeti",
+        "vade": "Vade Süresi Tercihi", "risk": "Risk Tercihi", "sektor": "Yatırım için Tercih Edilecek Sektör", "tutar": "Yatırım Tutarı",
+        "wait": "Analiz Yapılıyor...", "report_head": "📋 Kişiselleştirilmiş Stratejik Analiz Raporu",
+        "info": "Lütfen kriterlerinizi belirleyip Analizi Başlat'a tıklayın.", "prompt_lang": "Raporu TÜRKÇE yaz."
     }
     sektor_options = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik", "Değerli Madenler", "Gayrimenkul Fonları", "Tercih Ettiğim Bir Sektör Yok"]
     para_options = ["Türk Lirası (TL)", "ABD Doları (USD)", "Euro (EUR)", "Pound (GBP)"]
@@ -95,7 +81,7 @@ else:
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
     try: st.image("logo.png", width=300)
-    except Exception: st.write("")
+    except: st.write("")
 
 st.markdown(f"""
     <div style="text-align: center; padding-bottom: 20px;">
@@ -124,16 +110,14 @@ if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             try:
-                # Modeli otomatik bulur (Hata payını sıfırlar)
-                model_names = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                working_model = next((m for m in model_names if "flash" in m), model_names[0])
-                model = genai.GenerativeModel(working_model)
+                # En stabil ve limitleri en geniş olan modele sabitliyoruz
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 prompt = f"""
                 {T['prompt_lang']}
-                Role: Senior Portfolio Manager at Ak Portföy. 
+                Role: Senior Portfolio Manager. 
                 Data: {df.to_string()}
-                Profile: {amount} {ans_para}, Liquidity: {ans_likidite}, 
+                Client Profile: {amount} {ans_para}, Liquidity: {ans_likidite}, 
                 Interest: {ans_faiz}, Period: {ans_vade}, Risk: {ans_risk}, Sector: {ans_sektor}.
                 Generate a professional investment report.
                 """
@@ -142,11 +126,9 @@ if df is not None:
                 st.info(res.text)
 
             except Exception as e:
-                # 429 KOTA HATASI VE DİĞERLERİ İÇİN ŞIK UYARI
                 if "429" in str(e):
-                    st.warning("⚠️ Yapay zeka servisimiz şu an yoğun. Lütfen 30 saniye bekleyip tekrar deneyin.")
+                    st.warning("⚠️ Sunucu şu an yoğun. Lütfen 30 saniye sonra tekrar deneyin. (Rate Limit)")
                 else:
-                    st.error(f"Teknik bir sorun oluştu. Lütfen tekrar deneyin.")
-                    st.write(f"Detay: {str(e)}")
+                    st.error("Bir bağlantı sorunu oluştu, lütfen tekrar deneyin.")
     else:
         st.info(T['info'])
