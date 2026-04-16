@@ -8,10 +8,11 @@ import glob
 # --- 1. KURUMSAL YAPILANDIRMA ---
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except:
-    st.error("API Anahtarı bulunamadı! Lütfen Streamlit Secrets ayarlarını kontrol edin.")
-
-st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
+  except Exception as e:
+    if "429" in str(e):
+        st.warning("⚠️ Yapay zeka servisimiz şu an yoğun. Lütfen 30 saniye bekleyip tekrar deneyin.")
+    else:
+        st.error(f"Teknik bir sorun oluştu: {str(e)}")
 
 # Ak Portföy KIRMIZI VE KOYU PANEL Teması
 st.markdown("""
