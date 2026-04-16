@@ -6,7 +6,7 @@ import json
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
 if "GEMINI_API_KEY" not in st.secrets:
-    st.error("⚠️ API Anahtarı Bulunamadı! Lütfen ayarlardan kontrol edin.")
+    st.error("⚠️ API Anahtarı Bulunamadı! Streamlit Secrets ayarlarını kontrol edin.")
     st.stop()
 
 API_KEY = st.secrets["GEMINI_API_KEY"]
@@ -44,17 +44,17 @@ lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
 
 T = {
     "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ" if lang == "Türkçe" else "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
-    "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi" if lang == "Türkçe" else "KI-Gesteuerte Investment-Plattform",
+    "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi" if lang == "Türkçe" else "KI-Investment-Plattform",
     "btn": "Analizi Başlat" if lang == "Türkçe" else "Analyse Starten",
-    "wait": "Yapay Zeka Portföyü Analiz Ediyor..." if lang == "Türkçe" else "KI analysiert...",
-    "report_head": "📋 Kişiselleştirilmiş Stratejik Analiz Raporu" if lang == "Türkçe" else "📋 Personalisierter Strategischer Analysebericht",
+    "wait": "Yatırım Uzmanı Verileri İnceliyor..." if lang == "Türkçe" else "KI analysiert...",
+    "report_head": "📋 Kişiselleştirilmiş Stratejik Yatırım Raporu",
     "prompt_lang": "TÜRKÇE" if lang == "Türkçe" else "ALMANCA"
 }
 
-sektor_options = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik ve Yeşil Enerji", "Değerli Madenler ve Emtialar", "Gayrimenkul Yatırım Fonları", "Tercih Ettiğim Bir Sektör Yok"] if lang == "Türkçe" else ["Technologie & KI", "Nachhaltigkeit & Grüne Energie", "Edelmetalle & Rohstoffe", "Immobilienfonds", "Keine Präferenz"]
+sektor_options = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik ve Yeşil Enerji", "Değerli Madenler ve Emtialar", "Gayrimenkul Yatırım Fonları", "Tercih Ettiğim Bir Sektör Yok"]
 para_options = ["TL", "USD", "EUR", "GBP"]
-faiz_options = ["Faizsiz", "Faizli"] if lang == "Türkçe" else ["Zinsfrei", "Zinsbasiert"]
-risk_options = ["Korumalı", "Dengeli", "Agresif"] if lang == "Türkçe" else ["Konservativ", "Ausgewogen", "Aggressiv"]
+faiz_options = ["Faizsiz", "Faizli"]
+risk_options = ["Korumalı", "Dengeli", "Agresif"]
 
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
@@ -65,64 +65,66 @@ st.markdown(f"<div style='text-align:center; padding-bottom: 20px;'><h1 style='c
 
 # --- 4. YATIRIM TERCİHLERİ ---
 with st.sidebar:
-    st.header("Yatırım Tercihleri" if lang == "Türkçe" else "Anlagepräferenzen")
-    ans_likidite = st.selectbox("Likidite Tercihi" if lang == "Türkçe" else "Liquiditätspräferenz", ["T+0", "T+1", "T+2", "T+3"])
-    ans_para = st.radio("Para Birimi" if lang == "Türkçe" else "Währung", para_options)
-    ans_faiz = st.radio("Faiz Hassasiyeti" if lang == "Türkçe" else "Zinssensitivität", faiz_options)
-    ans_vade = st.selectbox("Vade Süresi" if lang == "Türkçe" else "Laufzeit", ["0-1 yıl", "2-5 yıl", "10+ yıl"] if lang == "Türkçe" else ["0-1 Jahr", "2-5 Jahre", "10+ Jahre"])
-    ans_risk = st.select_slider("Risk Tercihi" if lang == "Türkçe" else "Risikopräferenz", options=risk_options)
-    ans_sektor = st.selectbox("Sektör" if lang == "Türkçe" else "Bevorzugter Sektor", sektor_options)
-    amount = st.number_input("Tutar" if lang == "Türkçe" else "Investitionsbetrag", min_value=1000, value=50000)
+    st.header("Yatırım Tercihleri")
+    ans_likidite = st.selectbox("Likidite Tercihi", ["T+0", "T+1", "T+2", "T+3"])
+    ans_para = st.radio("Para Birimi", para_options)
+    ans_faiz = st.radio("Faiz Hassasiyeti", faiz_options)
+    ans_vade = st.selectbox("Vade Süresi", ["0-1 yıl", "2-5 yıl", "10+ yıl"])
+    ans_risk = st.select_slider("Risk Tercihi", options=risk_options)
+    ans_sektor = st.selectbox("Sektör", sektor_options)
+    amount = st.number_input("Yatırım Tutarı", min_value=1000, value=50000)
     st.divider()
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 5. DOĞRUDAN (REST API) YÖNTEMİ İLE GERÇEK ANALİZ ---
+# --- 5. PROFESYONEL ANALİZ MOTORU ---
 if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             
-            # YAPAY ZEKAYA GİDEN ÇOK DETAYLI ANALİZ TALİMATI
+            # DERİN ANALİZ PROMPT'U (Berna'nın istediği detay seviyesi)
             prompt = f"""
-            Sen Ak Portföy'de çalışan Kıdemli bir Portföy Yöneticisisin. Aşağıdaki müşteri profiline ve sağlanan fon verilerine dayanarak ÇOK DETAYLI, profesyonel ve analitik bir yatırım raporu hazırla. 
-            Rapor dili kesinlikle {T['prompt_lang']} olmalıdır.
+            Sen Ak Portföy'de görevli profesyonel bir Kıdemli Yatırım Uzmanısın. Aşağıdaki verileri kullanarak müşteriye özel çok kapsamlı bir analiz hazırla. 
+            Dil: {T['prompt_lang']}.
             
-            MÜŞTERİ PROFİLİ:
-            - Yatırım Tutarı: {amount} {ans_para}
-            - Likidite İhtiyacı: {ans_likidite}
-            - Faiz Hassasiyeti: {ans_faiz}
-            - Vade Beklentisi: {ans_vade}
-            - Risk Tercihi: {ans_risk}
-            - İlgilendiği Sektör: {ans_sektor}
+            MÜŞTERİ VERİLERİ:
+            Tutar: {amount} {ans_para} | Vade: {ans_vade} | Risk: {ans_risk} | Faiz: {ans_faiz} | Sektör: {ans_sektor} | Likidite: {ans_likidite}
             
-            MEVCUT FON VERİLERİ (Sadece bunlardan öner):
+            FON LİSTESİ:
             {df.to_string()}
             
-            RAPORDA ŞU BAŞLIKLAR KESİNLİKLE OLMALIDIR (Finansal terimler kullanarak detaylı açıkla):
-            1. Müşteri Profili ve Strateji Özeti: Müşterinin tercihlerinin ne anlama geldiğini açıkla.
-            2. Önerilen Fonlar: Yukarıdaki veri setinden müşterinin profiline EN UYGUN Ak Portföy fonlarını seç.
-            3. Neden Bu Fonlar Seçildi?: Seçilen fonların, müşterinin risk ({ans_risk}) ve likidite ({ans_likidite}) beklentileriyle nasıl eşleştiğini sayısal/mantıksal verilerle kanıtla.
-            4. Neden Bu Sektöre ({ans_sektor}) Yatırım Yapılmalı?: Bu sektörün veya stratejinin genel piyasa beklentilerini profesyonelce yorumla.
+            ANALİZ ŞU KRİTERLERE GÖRE YAPILMALI:
+            1. Seçilen her fonun müşterinin '{ans_risk}' risk profiline neden %100 uyduğunu teknik olarak açıkla.
+            2. '{ans_sektor}' sektöründeki güncel piyasa fırsatlarını Ak Portföy fonları üzerinden gerekçelendir.
+            3. '{ans_vade}' vadede neden bu fonların seçildiğini, vade sonunda beklenen stratejik avantajları anlat.
+            4. Neden başka bir fon değil de 'ÖZELLİKLE BU' fonun seçildiğini (getiri potansiyeli, risk puanı vb.) kanıtlarıyla yaz.
             """
 
-            # Aracı kütüphane kullanmadan doğrudan Google Sunucularına bağlanıyoruz (404 Hatasını yok eder)
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+            # 404 HATASINI ÇÖZEN "V1" ENDPOINT'İ
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
             headers = {'Content-Type': 'application/json'}
-            data = {"contents": [{"parts": [{"text": prompt}]}]}
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
             try:
-                response = requests.post(url, headers=headers, json=data)
+                response = requests.post(url, headers=headers, json=payload)
                 
                 if response.status_code == 200:
-                    result = response.json()
-                    ai_text = result['candidates'][0]['content']['parts'][0]['text']
+                    ai_response = response.json()
+                    ai_text = ai_response['candidates'][0]['content']['parts'][0]['text']
                     st.subheader(T['report_head'])
                     st.info(ai_text)
-                elif response.status_code == 429:
-                    st.warning("⚠️ Sunucu çok yoğun (Hız sınırı aşıldı). Lütfen 30 saniye bekleyip butona tekrar basın.")
+                    st.balloons() # Başarı kutlaması!
+                elif response.status_code == 404:
+                    # EĞER V1 DE 404 VERİRSE (ÇOK DÜŞÜK İHTİMAL), V1BETA İLE TEKRAR DENE
+                    url_beta = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+                    response = requests.post(url_beta, headers=headers, json=payload)
+                    if response.status_code == 200:
+                        st.info(response.json()['candidates'][0]['content']['parts'][0]['text'])
+                    else:
+                        st.error(f"Sistem şu an meşgul (Hata: {response.status_code}). Lütfen 1 dakika sonra tekrar deneyin.")
                 else:
-                    st.error(f"⚠️ API Hatası: {response.status_code} - Lütfen API anahtarınızı kontrol edin.")
+                    st.error(f"API Hatası ({response.status_code}): Lütfen API anahtarınızı Google AI Studio'dan kontrol edin.")
             
             except Exception as e:
-                st.error(f"📡 Bağlantı koptu: {e}")
+                st.error(f"Bağlantı Sorunu: {e}")
 else:
-    st.error("⚠️ Veri dosyası bulunamadı!")
+    st.error("⚠️ fonlar.csv veya fonlar.xlsx dosyası bulunamadı!")
