@@ -122,4 +122,26 @@ if df is not None:
         with st.spinner(T['wait']):
             try:
                 # Modeli daha sağlam bir şekilde seçiyoruz
-                model = genai.GenerativeModel('models
+                model = genai.GenerativeModel('models/gemini-1.5-flash') 
+                
+                prompt = f"""
+                {T['prompt_lang']}
+                Role: Financial Analyst. 
+                Data: {df.to_string()}
+                User Profile: Amount: {amount}, Currency: {ans_para}, Liquidity: {ans_likidite}, 
+                Interest: {ans_faiz}, Period: {ans_vade}, Risk: {ans_risk}, Sector: {ans_sektor}.
+                Provide a professional investment strategy.
+                """
+                res = model.generate_content(prompt)
+                st.subheader(T['report_head'])
+                st.info(res.text)
+            except Exception as e:
+                # Eğer hala bulamazsa alternatif isim dene
+                try:
+                    model = genai.GenerativeModel('gemini-pro')
+                    res = model.generate_content(prompt)
+                    st.info(res.text)
+                except:
+                    st.error("Yapay zeka servisinde geçici bir yoğunluk var, lütfen tekrar deneyin.")
+    else:
+        st.info(T['info'])
