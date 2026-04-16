@@ -1,15 +1,15 @@
 import streamlit as st
-import google.generativeai as genai
 import pandas as pd
-import plotly.express as px
 import glob
+import requests
+import json
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
 if "GEMINI_API_KEY" not in st.secrets:
-    st.error("⚠️ API Anahtarı Ayarlanmamış!")
+    st.error("⚠️ API Anahtarı Bulunamadı! Lütfen ayarlardan kontrol edin.")
     st.stop()
 
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+API_KEY = st.secrets["GEMINI_API_KEY"]
 
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
@@ -46,9 +46,8 @@ T = {
     "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ" if lang == "Türkçe" else "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
     "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi" if lang == "Türkçe" else "KI-Gesteuerte Investment-Plattform",
     "btn": "Analizi Başlat" if lang == "Türkçe" else "Analyse Starten",
-    "wait": "Yapay Zeka Analiz Yapıyor..." if lang == "Türkçe" else "KI analysiert...",
+    "wait": "Yapay Zeka Portföyü Analiz Ediyor..." if lang == "Türkçe" else "KI analysiert...",
     "report_head": "📋 Kişiselleştirilmiş Stratejik Analiz Raporu" if lang == "Türkçe" else "📋 Personalisierter Strategischer Analysebericht",
-    "info": "Lütfen kriterlerinizi belirleyip Analizi Başlat'a tıklayın." if lang == "Türkçe" else "Bitte wählen Sie Ihre Kriterien.",
     "prompt_lang": "TÜRKÇE" if lang == "Türkçe" else "ALMANCA"
 }
 
@@ -70,59 +69,60 @@ with st.sidebar:
     ans_likidite = st.selectbox("Likidite Tercihi" if lang == "Türkçe" else "Liquiditätspräferenz", ["T+0", "T+1", "T+2", "T+3"])
     ans_para = st.radio("Para Birimi" if lang == "Türkçe" else "Währung", para_options)
     ans_faiz = st.radio("Faiz Hassasiyeti" if lang == "Türkçe" else "Zinssensitivität", faiz_options)
-    ans_vade = st.selectbox("Vade Süresi Tercihi" if lang == "Türkçe" else "Laufzeit", ["0-1 yıl", "2-5 yıl", "10+ yıl"] if lang == "Türkçe" else ["0-1 Jahr", "2-5 Jahre", "10+ Jahre"])
+    ans_vade = st.selectbox("Vade Süresi" if lang == "Türkçe" else "Laufzeit", ["0-1 yıl", "2-5 yıl", "10+ yıl"] if lang == "Türkçe" else ["0-1 Jahr", "2-5 Jahre", "10+ Jahre"])
     ans_risk = st.select_slider("Risk Tercihi" if lang == "Türkçe" else "Risikopräferenz", options=risk_options)
-    ans_sektor = st.selectbox("Yatırım için Tercih Edilecek Sektör" if lang == "Türkçe" else "Bevorzugter Sektor", sektor_options)
-    amount = st.number_input("Yatırım Tutarı" if lang == "Türkçe" else "Investitionsbetrag", min_value=1000, value=50000)
+    ans_sektor = st.selectbox("Sektör" if lang == "Türkçe" else "Bevorzugter Sektor", sektor_options)
+    amount = st.number_input("Tutar" if lang == "Türkçe" else "Investitionsbetrag", min_value=1000, value=50000)
     st.divider()
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 6. ANALİZ VE RAPOR ---
+# --- 5. DOĞRUDAN (REST API) YÖNTEMİ İLE GERÇEK ANALİZ ---
 if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
-            try:
-                # KESİN VE TEK ÇÖZÜM: Sadece en stabil model olan gemini-pro'yu kullanıyoruz.
-                model = genai.GenerativeModel('gemini-pro')
-                
-                # YAPAY ZEKAYA GİDEN ÇOK DETAYLI ANALİZ TALİMATI
-                prompt = f"""
-                Sen Ak Portföy'de çalışan Kıdemli bir Portföy Yöneticisisin. Aşağıdaki müşteri profiline ve sağlanan fon verilerine dayanarak ÇOK DETAYLI, profesyonel ve analitik bir yatırım raporu hazırla. 
-                Rapor dili kesinlikle {T['prompt_lang']} olmalıdır.
-                
-                MÜŞTERİ PROFİLİ:
-                - Yatırım Tutarı: {amount} {ans_para}
-                - Likidite İhtiyacı: {ans_likidite}
-                - Faiz Hassasiyeti: {ans_faiz}
-                - Vade Beklentisi: {ans_vade}
-                - Risk Tercihi: {ans_risk}
-                - İlgilendiği Sektör: {ans_sektor}
-                
-                MEVCUT FON VERİLERİ:
-                {df.to_string()}
-                
-                RAPORDA ŞU BAŞLIKLAR KESİNLİKLE OLMALIDIR:
-                1. Müşteri Profili ve Strateji Özeti
-                2. Önerilen Fonlar
-                3. Neden Bu Fonlar Seçildi?
-                4. Neden Bu Fonlara Yatırım Yapılmalı?
-                """
-                
-                res = model.generate_content(prompt)
-                
-                if res.text:
-                    st.subheader(T['report_head'])
-                    st.markdown(res.text)
-                else:
-                    st.warning("⚠️ Yapay zeka şu an cevap üretemedi, lütfen tekrar deneyin.")
+            
+            # YAPAY ZEKAYA GİDEN ÇOK DETAYLI ANALİZ TALİMATI
+            prompt = f"""
+            Sen Ak Portföy'de çalışan Kıdemli bir Portföy Yöneticisisin. Aşağıdaki müşteri profiline ve sağlanan fon verilerine dayanarak ÇOK DETAYLI, profesyonel ve analitik bir yatırım raporu hazırla. 
+            Rapor dili kesinlikle {T['prompt_lang']} olmalıdır.
+            
+            MÜŞTERİ PROFİLİ:
+            - Yatırım Tutarı: {amount} {ans_para}
+            - Likidite İhtiyacı: {ans_likidite}
+            - Faiz Hassasiyeti: {ans_faiz}
+            - Vade Beklentisi: {ans_vade}
+            - Risk Tercihi: {ans_risk}
+            - İlgilendiği Sektör: {ans_sektor}
+            
+            MEVCUT FON VERİLERİ (Sadece bunlardan öner):
+            {df.to_string()}
+            
+            RAPORDA ŞU BAŞLIKLAR KESİNLİKLE OLMALIDIR (Finansal terimler kullanarak detaylı açıkla):
+            1. Müşteri Profili ve Strateji Özeti: Müşterinin tercihlerinin ne anlama geldiğini açıkla.
+            2. Önerilen Fonlar: Yukarıdaki veri setinden müşterinin profiline EN UYGUN Ak Portföy fonlarını seç.
+            3. Neden Bu Fonlar Seçildi?: Seçilen fonların, müşterinin risk ({ans_risk}) ve likidite ({ans_likidite}) beklentileriyle nasıl eşleştiğini sayısal/mantıksal verilerle kanıtla.
+            4. Neden Bu Sektöre ({ans_sektor}) Yatırım Yapılmalı?: Bu sektörün veya stratejinin genel piyasa beklentilerini profesyonelce yorumla.
+            """
 
-            except Exception as e:
-                error_str = str(e)
-                if "429" in error_str or "quota" in error_str.lower():
-                    st.warning("⚠️ Sunucu çok yoğun! Lütfen 30 saniye bekleyip tekrar Analizi Başlat'a tıklayın.")
+            # Aracı kütüphane kullanmadan doğrudan Google Sunucularına bağlanıyoruz (404 Hatasını yok eder)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+            headers = {'Content-Type': 'application/json'}
+            data = {"contents": [{"parts": [{"text": prompt}]}]}
+
+            try:
+                response = requests.post(url, headers=headers, json=data)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    ai_text = result['candidates'][0]['content']['parts'][0]['text']
+                    st.subheader(T['report_head'])
+                    st.info(ai_text)
+                elif response.status_code == 429:
+                    st.warning("⚠️ Sunucu çok yoğun (Hız sınırı aşıldı). Lütfen 30 saniye bekleyip butona tekrar basın.")
                 else:
-                    st.error(f"📡 Teknik Hata Detayı: {error_str}")
-    else:
-        st.info(T['info'])
+                    st.error(f"⚠️ API Hatası: {response.status_code} - Lütfen API anahtarınızı kontrol edin.")
+            
+            except Exception as e:
+                st.error(f"📡 Bağlantı koptu: {e}")
 else:
     st.error("⚠️ Veri dosyası bulunamadı!")
