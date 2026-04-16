@@ -21,8 +21,44 @@ st.markdown("""
     hr { border: 1px solid #D8232A !important; }
     .stRadio > label, .stSelectbox > label { font-weight: bold; color: #1e1e1e; }
 </style>
-""", unsafe_allow_html=True)
+st.markdown("""
+<style>
+    /* Ana Sayfa Arka Planı */
+    .main { background-color: #ffffff; }
 
+    /* YAN MENÜ (SIDEBAR) ÖZELLEŞTİRME */
+    [data-testid="stSidebar"] {
+        background-color: #1e1e1e; /* Koyu antrasit */
+    }
+
+    /* Yan menüdeki tüm metinleri beyaz yapıyoruz */
+    [data-testid="stSidebar"] .stMarkdown, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2 {
+        color: #ffffff !important;
+    }
+
+    /* Metrik değerleri (Kırmızı) */
+    [data-testid="stMetricValue"] { font-size: 24px; color: #D8232A; }
+
+    /* Buton Tasarımı */
+    .stButton>button {
+        background-color: #D8232A;
+        color: white;
+        border-radius: 8px;
+        width: 100%;
+        border: none;
+        font-weight: bold;
+        height: 3em;
+    }
+    .stButton>button:hover {
+        background-color: #ffffff;
+        color: #D8232A; /* Üzerine gelince beyaz üstü kırmızı yazı */
+    }
+</style>
+""", unsafe_allow_html=True)
 # --- 2. VERİ MOTORU ---
 def load_and_clean_data():
     files = glob.glob("fonlar*") + glob.glob("*.csv") + glob.glob("*.xlsx")
