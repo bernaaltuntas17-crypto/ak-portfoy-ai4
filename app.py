@@ -5,16 +5,16 @@ import requests
 import json
 import os
 
-# --- 1. KURUMSAL YAPILANDIRMA ---
+# --- 1. AYARLAR VE GÜVENLİK ---
 if "GEMINI_API_KEY" not in st.secrets:
-    st.error("⚠️ API Anahtarı Secrets kısmında bulunamadı!")
+    st.error("⚠️ API Anahtarı Bulunamadı! Streamlit Secrets kısmına anahtarı ekleyin.")
     st.stop()
 
 API_KEY = st.secrets["GEMINI_API_KEY"]
 
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide")
 
-# Ak Portföy Kurumsal Teması
+# Ak Portföy Kurumsal Kırmızı & Siyah Teması
 st.markdown("""
 <style>
     .main { background-color: #ffffff; }
@@ -22,13 +22,13 @@ st.markdown("""
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 { color: #ffffff !important; }
     .stButton>button { background-color: #D8232A; color: white; border-radius: 8px; width: 100%; border: none; font-weight: bold; height: 3em; }
+    .stButton>button:hover { background-color: #ffffff; color: #D8232A; border: 1px solid #D8232A; }
     hr { border: 1px solid #D8232A !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 2. VERİ YÜKLEME ---
 def load_data():
-    # Veri dosyalarını bulma (fonlar.csv veya fonlar.xlsx)
     files = glob.glob("fonlar*") + glob.glob("*.csv") + glob.glob("*.xlsx")
     for f in files:
         try:
@@ -38,76 +38,101 @@ def load_data():
 
 df = load_data()
 
-# --- 3. LOGO VE BAŞLIK ALANI (HATA DÜZELTİLDİ) ---
+# --- 3. DİL DESTEĞİ VE SÖZLÜK ---
+lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
+
+if lang == "Almanca":
+    T = {
+        "head": "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
+        "sub": "KI-Gesteuerte Investment-Plattform der nächsten Generation",
+        "sidebar_h": "Anlagepräferenzen",
+        "risk": "Risikopräferenz",
+        "sektor": "Bevorzugter Sektor",
+        "vade": "Anlagehorizont",
+        "amount": "Investitionsbetrag (TL)",
+        "btn": "Analyse Starten",
+        "wait": "Strategie wird erstellt...",
+        "report": "📋 Strategischer Analysebericht",
+        "prompt_lang": "ALMANCA",
+        "error": "📡 Verbindungsfehler. Bitte versuchen Sie es erneut."
+    }
+    sektor_opt = ["Technologie & KI", "Nachhaltigkeit", "Rohstoffe", "Immobilien", "Keine Präferenz"]
+    risk_opt = ["Konservativ", "Ausgewogen", "Aggressiv"]
+else:
+    T = {
+        "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ",
+        "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi",
+        "sidebar_h": "Yatırım Tercihleri",
+        "risk": "Risk Tercihi",
+        "sektor": "Odak Sektör",
+        "vade": "Vade Beklentisi",
+        "amount": "Yatırım Tutarı (TL)",
+        "btn": "Analizi Başlat",
+        "wait": "Yatırım Stratejisi Oluşturuluyor...",
+        "report": "📋 Stratejik Yatırım Raporu",
+        "prompt_lang": "TÜRKÇE",
+        "error": "📡 Bağlantı sorunu oluştu. Lütfen tekrar deneyin."
+    }
+    sektor_opt = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik", "Değerli Madenler", "Gayrimenkul Yatırım Fonları", "Tercih Ettiğim Bir Sektör Yok"]
+    risk_opt = ["Korumalı", "Dengeli", "Agresif"]
+
+# --- 4. ARAYÜZ ---
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
-    # Az önceki DeltaGenerator hatasını bu blokla kökten çözüyoruz
     if os.path.exists("logo.png"):
         st.image("logo.png", width=300)
     else:
         st.markdown("<h2 style='text-align:center; color:#D8232A;'>AK Portföy</h2>", unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align:center; color:#D8232A; margin-top:0;'>AKILLI YATIRIM TAVSİYESİ</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#666; font-style:italic;'>Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi</p><hr>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='text-align:center; color:#D8232A;'>{T['head']}</h1>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align:center; color:#666; font-style:italic;'>{T['sub']}</p><hr>", unsafe_allow_html=True)
 
-# --- 4. YATIRIM TERCİHLERİ ---
 with st.sidebar:
-    st.header("Yatırım Tercihleri")
-    lang = st.selectbox("Dil Seçimi", ["Türkçe", "Almanca"])
+    st.header(T['sidebar_h'])
+    ans_risk = st.select_slider(T['risk'], options=risk_opt)
+    ans_sektor = st.selectbox(T['sektor'], sektor_opt)
+    ans_vade = st.selectbox(T['vade'], ["0-1 yıl/Jahr", "2-5 yıl/Jahre", "10+ yıl/Jahre"])
+    amount_val = st.number_input(T['amount'], min_value=1000, value=50000)
     st.divider()
-    ans_risk = st.select_slider("Risk Tercihi", options=["Korumalı", "Dengeli", "Agresif"])
-    ans_sektor = st.selectbox("Odak Sektör", ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik", "Emtia ve Değerli Madenler", "Gayrimenkul"])
-    ans_vade = st.selectbox("Vade Beklentisi", ["0-1 yıl", "2-5 yıl", "10+ yıl"])
-    amount = st.number_input("Yatırım Tutarı (TL)", min_value=1000, value=50000)
-    st.divider()
-    analyze_btn = st.button("Analizi Başlat", type="primary")
+    analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 5. GERÇEK ANALİZ MOTORU ---
+# --- 5. GERÇEK VE DERİN ANALİZ MOTORU ---
 if df is not None:
     if analyze_btn:
-        with st.spinner("Yatırım Uzmanı Verileri İnceliyor..."):
-            
-            # SENİN İSTEDİĞİN DERİN ANALİZ TALİMATI
+        with st.spinner(T['wait']):
+            # SENİN İSTEDİĞİN O DERİN VE TEKNİK ANALİZ TALİMATI
             prompt = f"""
-            Sen Ak Portföy'de Kıdemli Yatırım Uzmanısın. Müşteri için fon bazlı, profesyonel bir rapor hazırla.
-            Dil: {lang}
+            Sen Ak Portföy'de Kıdemli Yatırım Uzmanısın. Rapor dili {T['prompt_lang']} olmalıdır.
+            Aşağıdaki verilere dayanarak, demo veya sahte metin olmadan GERÇEK bir analiz yap.
             
-            MÜŞTERİ TERCİHLERİ:
-            - Yatırım: {amount} TL | Vade: {ans_vade} | Risk: {ans_risk} | Sektör: {ans_sektor}
+            MÜŞTERİ VERİLERİ:
+            - Yatırım: {amount_val} TL | Risk: {ans_risk} | Sektör: {ans_sektor} | Vade: {ans_vade}
             
-            ELİNDEKİ GERÇEK FON VERİLERİ:
+            ELİNDEKİ FON LİSTESİ:
             {df.to_string()}
             
             RAPORDA ŞUNLARI DETAYLI ŞEKİLDE AÇIKLA:
-            1. Seçilen Ak Portföy fonlarının '{ans_risk}' risk profiline neden tam uyduğunu teknik olarak anlat.
-            2. '{ans_sektor}' sektörü neden seçildi ve bu fonların içindeki ağırlığı ne olmalı?
-            3. Seçilen her bir fonun avantajını, eldeki getiri/risk verilerine dayanarak kanıtla.
-            4. Bu portföyün '{ans_vade}' vadede sağlayacağı stratejik avantajı profesyonelce yorumla.
+            1. Seçilen Ak Portföy fonlarının '{ans_risk}' risk profiline neden %100 uyduğunu teknik verilerle açıkla.
+            2. '{ans_sektor}' sektöründeki fırsatların bu fonlar üzerinden nasıl değerlendirildiğini anlat.
+            3. Seçilen her bir fonun diğerlerine göre avantajını getiri/risk puanı üzerinden kanıtla.
+            4. Bu portföyün '{ans_vade}' sonunda yatırımcıya sağlayacağı stratejik katma değeri profesyonelce yorumla.
             """
 
-            # 404 HATASINI ENGELLEYEN EN STABİL ADRES (v1)
+            # 404 HATASINI ÇÖZEN EN GÜNCEL "V1" ENDPOINT'İ
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
             headers = {'Content-Type': 'application/json'}
             payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
             try:
                 response = requests.post(url, headers=headers, json=payload, timeout=30)
-                
                 if response.status_code == 200:
                     ai_text = response.json()['candidates'][0]['content']['parts'][0]['text']
-                    st.subheader("📋 Kişiselleştirilmiş Stratejik Yatırım Raporu")
+                    st.subheader(T['report'])
                     st.info(ai_text)
                     st.balloons()
                 else:
-                    # Alternatif Beta kanalı (Eğer v1 yanıt vermezse)
-                    url_beta = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
-                    response_beta = requests.post(url_beta, headers=headers, json=payload)
-                    if response_beta.status_code == 200:
-                        st.info(response_beta.json()['candidates'][0]['content']['parts'][0]['text'])
-                    else:
-                        st.error(f"📡 API Bağlantı Hatası: {response_beta.status_code}. Lütfen API anahtarınızı (AIzaSy ile başlamalı) kontrol edin.")
-            
+                    st.error(f"{T['error']} (Hata Kodu: {response.status_code})")
             except Exception as e:
                 st.error(f"Bağlantı koptu: {e}")
 else:
-    st.error("⚠️ Veri dosyası (fonlar.xlsx) bulunamadı!")
+    st.error("⚠️ Veri dosyası (fonlar.xlsx) bulunamadı! Lütfen GitHub'a yükleyin.")
