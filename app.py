@@ -82,12 +82,8 @@ if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             try:
-                # İLK DENEME: En yeni ve hızlı model
-                try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                except:
-                    # B PLANI: Flash çalışmazsa eski ama en sağlam modeli (Pro) dene
-                    model = genai.GenerativeModel('gemini-pro')
+                # KESİN ÇÖZÜM: Kütüphane sürümüyle uyumsuzluk yaşamamak için eski ve stabil modele geçildi
+                model = genai.GenerativeModel('gemini-pro')
                 
                 # YAPAY ZEKAYA GİDEN ÇOK DETAYLI ANALİZ TALİMATI
                 prompt = f"""
@@ -125,7 +121,6 @@ if df is not None:
                 if "429" in error_str or "quota" in error_str.lower():
                     st.warning("⚠️ Sunucu çok yoğun! Lütfen 30 saniye bekleyip tekrar Analizi Başlat'a tıklayın.")
                 else:
-                    # ŞİMDİ GERÇEK HATAYI EKRANDA GÖRECEĞİZ
                     st.error(f"📡 Teknik Hata Detayı: {error_str}")
     else:
         st.info(T['info'])
