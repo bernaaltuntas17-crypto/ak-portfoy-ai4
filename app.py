@@ -10,34 +10,19 @@ genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
-# Ak Portföy KIRMIZI VE KOYU PANEL Teması (CSS)
+# Ak Portföy KIRMIZI VE KOYU PANEL Teması
 st.markdown("""
 <style>
     .main { background-color: #ffffff; }
-    [data-testid="stSidebar"] {
-        background-color: #1e1e1e; 
-    }
-    [data-testid="stSidebar"] .stMarkdown, 
-    [data-testid="stSidebar"] label, 
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] h1,
-    [data-testid="stSidebar"] h2 {
+    [data-testid="stSidebar"] { background-color: #1e1e1e; }
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 {
         color: #ffffff !important;
     }
     .stButton>button {
-        background-color: #D8232A;
-        color: white;
-        border-radius: 8px;
-        width: 100%;
-        border: none;
-        font-weight: bold;
-        height: 3em;
+        background-color: #D8232A; color: white; border-radius: 8px; width: 100%; border: none; font-weight: bold; height: 3em;
     }
-    .stButton>button:hover {
-        background-color: #ffffff;
-        color: #D8232A;
-        border: 1px solid #D8232A;
-    }
+    .stButton>button:hover { background-color: #ffffff; color: #D8232A; border: 1px solid #D8232A; }
     hr { border: 1px solid #D8232A !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -55,18 +40,59 @@ def load_and_clean_data():
 
 df = load_and_clean_data()
 
-# --- 3. DİL VE LOGO ---
+# --- 3. TAM DİL DESTEĞİ (Sözlük) ---
 lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
-T = {
-    "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ" if lang == "Türkçe" else "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
-    "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi" if lang == "Türkçe" else "KI-Gesteuerte Investment-Plattform",
-    "btn": "Analizi Başlat" if lang == "Türkçe" else "Analyse Starten"
-}
 
+if lang == "Almanca":
+    T = {
+        "head": "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
+        "sub": "KI-Gesteuerte Investment-Plattform der nächsten Generation",
+        "btn": "Analyse Starten",
+        "sidebar_head": "Anlagepräferenzen",
+        "likidite": "Liquiditätspräferenz",
+        "para": "Währung",
+        "faiz": "Zinssensitivität",
+        "vade": "Laufzeit",
+        "risk": "Risikopräferenz",
+        "sektor": "Bevorzugter Sektor",
+        "tutar": "Investitionsbetrag",
+        "wait": "Strategie wird erstellt...",
+        "report_head": "📋 Personalisierter Strategischer Analysebericht",
+        "info": "Bitte wählen Sie Ihre Kriterien und klicken Sie auf 'Analyse Starten'.",
+        "prompt_lang": "Write the entire report in GERMAN."
+    }
+    sektor_options = ["Technologie & KI", "Nachhaltigkeit & Grüne Energie", "Edelmetalle & Rohstoffe", "Immobilienfonds (GYF)", "Keine Präferenz"]
+    para_options = ["Türkische Lira (TL)", "US-Dollar (USD)", "Euro (EUR)", "Pfund (GBP)"]
+    faiz_options = ["Zinsfrei", "Zinsbasiert"]
+    risk_options = ["Konservativ", "Ausgewogen", "Aggressiv"]
+else:
+    T = {
+        "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ",
+        "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi",
+        "btn": "Analizi Başlat",
+        "sidebar_head": "Yatırım Tercihleri",
+        "likidite": "Likidite Tercihi",
+        "para": "Para Birimi",
+        "faiz": "Faiz Hassasiyeti",
+        "vade": "Vade Süresi Tercihi",
+        "risk": "Risk Tercihi",
+        "sektor": "Yatırım için Tercih Edilecek Sektör",
+        "tutar": "Yatırım Tutarı",
+        "wait": "Strateji Oluşturuluyor...",
+        "report_head": "📋 Kişiselleştirilmiş Stratejik Analiz Raporu",
+        "info": "Lütfen kriterlerinizi belirledikten sonra sol taraftaki 'Analizi Başlat' butonuna tıklayın.",
+        "prompt_lang": "Raporun tamamını TÜRKÇE yaz."
+    }
+    sektor_options = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik ve Yeşil Enerji", "Değerli Madenler ve Emtialar", "Gayrimenkul Yatırım Fonları", "Tercih Ettiğim Bir Sektör Yok"]
+    para_options = ["Türk Lirası (TL)", "ABD Doları (USD)", "Euro (EUR)", "Pound (GBP)"]
+    faiz_options = ["Faizsiz", "Faizli"]
+    risk_options = ["Korumalı", "Dengeli", "Agresif"]
+
+# --- 4. LOGO VE BAŞLIK ---
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
     try: st.image("logo.png", width=300)
-    except: st.write("Logo Yükleniyor...")
+    except: st.write("Logo...")
 
 st.markdown(f"""
     <div style="text-align: center; padding-bottom: 20px;">
@@ -76,45 +102,35 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-# --- 4. YATIRIM TERCİHLERİ (SOL PANEL) ---
+# --- 5. YATIRIM TERCİHLERİ ---
 with st.sidebar:
-    st.header("Yatırım Tercihleri")
-    ans_likidite = st.selectbox("Likidite Tercihi", ["T+0", "T+1", "T+2", "T+3"])
-    ans_para = st.radio("Para Birimi", ["Türk Lirası (TL)", "ABD Doları (USD)", "Euro (EUR)", "Pound (GBP)"])
-    ans_faiz = st.radio("Faiz Hassasiyeti", ["Faizsiz", "Faizli"])
-    ans_vade = st.selectbox("Vade Süresi Tercihi", ["0-1 yıl", "2-5 yıl", "10+ yıl"])
-    ans_risk = st.select_slider("Risk Tercihi", options=["Korumalı", "Dengeli", "Agresif"])
-    
-    sektor_options = [
-        "Teknoloji ve Yapay Zeka (Yüksek büyüme odaklı)",
-        "Sürdürülebilirlik ve Yeşil Enerji (ESG)",
-        "Değerli Madenler ve Emtialar (Altın, Gümüş, Petrol)",
-        "Gayrimenkul Yatırım Fonları (GYF)",
-        "Tercih Ettiğim Bir Sektör Yok"
-    ]
-    ans_sektor = st.selectbox("Yatırım için Tercih Edilecek Sektör", sektor_options)
-    amount = st.number_input("Yatırım Tutarı", min_value=1000, value=50000)
+    st.header(T['sidebar_head'])
+    ans_likidite = st.selectbox(T['likidite'], ["T+0", "T+1", "T+2", "T+3"])
+    ans_para = st.radio(T['para'], para_options)
+    ans_faiz = st.radio(T['faiz'], faiz_options)
+    ans_vade = st.selectbox(T['vade'], ["0-1 yıl/Jahr", "2-5 yıl/Jahre", "10+ yıl/Jahre"])
+    ans_risk = st.select_slider(T['risk'], options=risk_options)
+    ans_sektor = st.selectbox(T['sektor'], sektor_options)
+    amount = st.number_input(T['tutar'], min_value=1000, value=50000)
     
     st.divider()
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 5. ANALİZ VE RAPOR ---
+# --- 6. ANALİZ VE RAPOR ---
 if df is not None:
     if analyze_btn:
-        with st.spinner('Strateji Oluşturuluyor...'):
+        with st.spinner(T['wait']):
             model = genai.GenerativeModel('gemini-1.5-flash')
-            prompt = f"""Bir Analist olarak profesyonel rapor yaz:
-            Tutar: {amount} {ans_para}, Likidite: {ans_likidite}, Faiz: {ans_faiz}, 
-            Vade: {ans_vade}, Risk: {ans_risk}, Sektör: {ans_sektor}.
-            Veriler: {df.to_string()}"""
-            
+            prompt = f"""
+            {T['prompt_lang']}
+            Role: Financial Analyst. 
+            Data: {df.to_string()}
+            User Profile: Amount: {amount}, Currency: {ans_para}, Liquidity: {ans_likidite}, 
+            Interest: {ans_faiz}, Period: {ans_vade}, Risk: {ans_risk}, Sector: {ans_sektor}.
+            Provide a professional investment strategy.
+            """
             res = model.generate_content(prompt)
-            st.subheader("📋 Kişiselleştirilmiş Stratejik Analiz Raporu")
+            st.subheader(T['report_head'])
             st.info(res.text)
-            
-            if '1Y (%)' in df.columns:
-                fig = px.bar(df, x='Kodu', y='1Y (%)', color='1Y (%)', color_continuous_scale=['#FFCCCC', '#D8232A'])
-                st.plotly_chart(fig, use_container_width=True)
     else:
-        st.write("")
-        st.info("Lütfen kriterlerinizi belirledikten sonra sol taraftaki 'Analizi Başlat' butonuna tıklayın.")
+        st.info(T['info'])
