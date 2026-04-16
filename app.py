@@ -13,15 +13,10 @@ st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layo
 # Ak Portföy KIRMIZI VE KOYU PANEL Teması (CSS)
 st.markdown("""
 <style>
-    /* Ana Sayfa Arka Planı */
     .main { background-color: #ffffff; }
-
-    /* YAN MENÜ (SIDEBAR) ÖZELLEŞTİRME */
     [data-testid="stSidebar"] {
-        background-color: #1e1e1e; /* Koyu antrasit */
+        background-color: #1e1e1e; 
     }
-
-    /* Yan menüdeki tüm metinleri beyaz yapıyoruz */
     [data-testid="stSidebar"] .stMarkdown, 
     [data-testid="stSidebar"] label, 
     [data-testid="stSidebar"] p,
@@ -29,11 +24,6 @@ st.markdown("""
     [data-testid="stSidebar"] h2 {
         color: #ffffff !important;
     }
-
-    /* Metrik değerleri (Akbank Kırmızısı) */
-    [data-testid="stMetricValue"] { font-size: 24px; color: #D8232A; }
-
-    /* Buton Tasarımı */
     .stButton>button {
         background-color: #D8232A;
         color: white;
@@ -48,6 +38,7 @@ st.markdown("""
         color: #D8232A;
         border: 1px solid #D8232A;
     }
+    hr { border: 1px solid #D8232A !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -78,14 +69,14 @@ with col_m:
     except: st.write("Logo Yükleniyor...")
 
 st.markdown(f"""
-    <div style="text-align: center;">
+    <div style="text-align: center; padding-bottom: 20px;">
         <h1 style="color: #D8232A; font-weight: bold; margin-bottom: 0;">{T['head']}</h1>
         <p style="color: #666; font-size: 1.1em; font-style: italic;">{T['sub']}</p>
         <hr style="width: 50%; margin: auto;">
     </div>
     """, unsafe_allow_html=True)
 
-# --- 4. YATIRIM TERCİHLERİ ---
+# --- 4. YATIRIM TERCİHLERİ (SOL PANEL) ---
 with st.sidebar:
     st.header("Yatırım Tercihleri")
     ans_likidite = st.selectbox("Likidite Tercihi", ["T+0", "T+1", "T+2", "T+3"])
@@ -109,18 +100,21 @@ with st.sidebar:
 
 # --- 5. ANALİZ VE RAPOR ---
 if df is not None:
-    st.write("")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("En İyi Fon", df.iloc[0]['Fon Adı'] if 'Fon Adı' in df.columns else "---")
-    c2.metric("Risk", ans_risk)
-    c3.metric("Vade", ans_vade)
-    c4.metric("AI Status", "Active")
-    st.divider()
-
-if analyze_btn and df is not None:
-    with st.spinner('Strateji Oluşturuluyor...'):
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Analist Rolü. Veriler: {df.to_string()}. Profil: {ans_likidite}, {ans_para}, {ans_faiz}, {ans_vade}, {ans_risk}, {ans_sektor}. Rapor yaz."
-        res = model.generate_content(prompt)
-        st.subheader("📋 Kişiselleştirilmiş Stratejik Analiz Raporu")
-        st.info(res.text)
+    if analyze_btn:
+        with st.spinner('Strateji Oluşturuluyor...'):
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            prompt = f"""Bir Analist olarak profesyonel rapor yaz:
+            Tutar: {amount} {ans_para}, Likidite: {ans_likidite}, Faiz: {ans_faiz}, 
+            Vade: {ans_vade}, Risk: {ans_risk}, Sektör: {ans_sektor}.
+            Veriler: {df.to_string()}"""
+            
+            res = model.generate_content(prompt)
+            st.subheader("📋 Kişiselleştirilmiş Stratejik Analiz Raporu")
+            st.info(res.text)
+            
+            if '1Y (%)' in df.columns:
+                fig = px.bar(df, x='Kodu', y='1Y (%)', color='1Y (%)', color_continuous_scale=['#FFCCCC', '#D8232A'])
+                st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.write("")
+        st.info("Lütfen kriterlerinizi belirledikten sonra sol taraftaki 'Analizi Başlat' butonuna tıklayın.")
