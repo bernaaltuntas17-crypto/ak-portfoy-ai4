@@ -2,16 +2,10 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 import plotly.express as px
-import os
 import glob
+import random
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
-if "GEMINI_API_KEY" not in st.secrets:
-    st.error("⚠️ API Anahtarı Bulunamadı!")
-    st.stop()
-
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
 # Ak Portföy KIRMIZI VE KOYU PANEL Teması
@@ -20,16 +14,18 @@ st.markdown("""
     .main { background-color: #ffffff; }
     [data-testid="stSidebar"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label, 
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 {
-        color: #ffffff !important;
-    }
-    .stButton>button {
-        background-color: #D8232A; color: white; border-radius: 8px; width: 100%; border: none; font-weight: bold; height: 3em;
-    }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 { color: #ffffff !important; }
+    .stButton>button { background-color: #D8232A; color: white; border-radius: 8px; width: 100%; border: none; font-weight: bold; height: 3em; }
     .stButton>button:hover { background-color: #ffffff; color: #D8232A; border: 1px solid #D8232A; }
     hr { border: 1px solid #D8232A !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# API Ayarı
+try:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+except:
+    st.sidebar.error("⚠️ API Anahtarı Ayarlanmamış!")
 
 # --- 2. VERİ MOTORU ---
 def load_and_clean_data():
@@ -44,93 +40,60 @@ def load_and_clean_data():
 
 df = load_and_clean_data()
 
-# --- 3. DİL DESTEĞİ ---
+# --- 3. DİL VE LOGO ---
 lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
+demo_mode = st.sidebar.toggle("Sunum Kurtarıcı (Demo Modu)", help="API hata verirse bunu açarak sunuma devam edin.")
 
-if lang == "Almanca":
-    T = {
-        "head": "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
-        "sub": "KI-Gesteuerte Investment-Plattform",
-        "btn": "Analyse Starten", "sidebar_head": "Anlagepräferenzen",
-        "likidite": "Liquiditätspräferenz", "para": "Währung", "faiz": "Zinssensitivität",
-        "vade": "Laufzeit", "risk": "Risikopräferenz", "sektor": "Sektor", "tutar": "Investition",
-        "wait": "Strategie wird erstellt...", "report_head": "📋 Strategischer Analysebericht",
-        "info": "Bitte wählen Sie Ihre Kriterien.", "prompt_lang": "Write in GERMAN."
-    }
-    sektor_options = ["Technologie", "Nachhaltigkeit", "Rohstoffe", "Immobilien", "Keine"]
-    para_options = ["TL", "USD", "EUR", "GBP"]
-    faiz_options = ["Zinsfrei", "Zinsbasiert"]
-    risk_options = ["Konservativ", "Ausgewogen", "Aggressiv"]
-else:
-    T = {
-        "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ",
-        "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi",
-        "btn": "Analizi Başlat", "sidebar_head": "Yatırım Tercihleri",
-        "likidite": "Likidite Tercihi", "para": "Para Birimi", "faiz": "Faiz Hassasiyeti",
-        "vade": "Vade Süresi", "risk": "Risk Tercihi", "sektor": "Sektör", "tutar": "Yatırım Tutarı",
-        "wait": "Yapay Zeka Analiz Yapıyor...", "report_head": "📋 Stratejik Analiz Raporu",
-        "info": "Lütfen kriterlerinizi belirleyip Analizi Başlat'a tıklayın.", "prompt_lang": "TÜRKÇE yaz."
-    }
-    sektor_options = ["Teknoloji", "Sürdürülebilirlik", "Değerli Madenler", "Gayrimenkul", "Farketmez"]
-    para_options = ["TL", "USD", "EUR", "GBP"]
-    faiz_options = ["Faizsiz", "Faizli"]
-    risk_options = ["Korumalı", "Dengeli", "Agresif"]
+T = {
+    "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ" if lang == "Türkçe" else "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
+    "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi" if lang == "Türkçe" else "KI-Gesteuerte Investment-Plattform",
+    "btn": "Analizi Başlat" if lang == "Türkçe" else "Analyse Starten",
+    "wait": "Analiz Yapılıyor..." if lang == "Türkçe" else "Wird analysiert...",
+}
 
-# --- 4. LOGO VE BAŞLIK ---
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
     try: st.image("logo.png", width=300)
     except: st.write("")
 
-st.markdown(f"""
-    <div style="text-align: center; padding-bottom: 20px;">
-        <h1 style="color: #D8232A; font-weight: bold; margin-bottom: 0;">{T['head']}</h1>
-        <p style="color: #666; font-size: 1.1em; font-style: italic;">{T['sub']}</p>
-        <hr style="width: 50%; margin: auto;">
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center;'><h1 style='color:#D8232A;'>{T['head']}</h1><p style='color:#666;'>{T['sub']}</p><hr style='width:50%; margin:auto;'></div>", unsafe_allow_html=True)
 
-# --- 5. YATIRIM TERCİHLERİ ---
+# --- 4. YATIRIM TERCİHLERİ ---
 with st.sidebar:
-    st.header(T['sidebar_head'])
-    ans_likidite = st.selectbox(T['likidite'], ["T+0", "T+1", "T+2", "T+3"])
-    ans_para = st.radio(T['para'], para_options)
-    ans_faiz = st.radio(T['faiz'], faiz_options)
-    ans_vade = st.selectbox(T['vade'], ["0-1 yıl", "2-5 yıl", "10+ yıl"])
-    ans_risk = st.select_slider(T['risk'], options=risk_options)
-    ans_sektor = st.selectbox(T['sektor'], sektor_options)
-    amount = st.number_input(T['tutar'], min_value=1000, value=50000)
-    
-    st.divider()
+    st.header("Yatırım Tercihleri")
+    ans_likidite = st.selectbox("Likidite", ["T+0", "T+1", "T+2"])
+    ans_para = st.radio("Para Birimi", ["TL", "USD", "EUR"])
+    ans_vade = st.selectbox("Vade", ["0-1 yıl", "2-5 yıl", "10+ yıl"])
+    ans_risk = st.select_slider("Risk", options=["Korumalı", "Dengeli", "Agresif"])
+    ans_sektor = st.selectbox("Sektör", ["Teknoloji", "Sürdürülebilirlik", "Emtia", "GYF"])
+    amount = st.number_input("Tutar", min_value=1000, value=50000)
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 6. ANALİZ VE RAPOR ---
+# --- 5. ANALİZ VE RAPOR ---
 if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
-            try:
-                # --- MODELİ OTOMATİK BULAN DİNAMİK KOD ---
-                # Mevcut modelleri listele ve içinden en uygun olanı seç
-                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                # 'flash' içeren varsa onu al, yoksa ilk modeli al
-                working_model = next((m for m in models if "flash" in m), models[0])
-                
-                model = genai.GenerativeModel(working_model)
-                
-                prompt = f"""
-                {T['prompt_lang']} Bir Portföy Analisti olarak rapor yaz.
-                Veriler: {df.to_string()}
-                Profil: {amount} {ans_para}, Vade: {ans_vade}, Risk: {ans_risk}, Sektör: {ans_sektor}.
-                """
-                res = model.generate_content(prompt)
-                st.subheader(T['report_head'])
-                st.info(res.text)
-
-            except Exception as e:
-                error_str = str(e)
-                if "429" in error_str:
-                    st.warning("⚠️ Sunucu çok yoğun! Lütfen 30 saniye bekleyip tekrar deneyin.")
-                else:
-                    st.error(f"📡 Bağlantı yenileniyor... (Hata: {error_str})")
+            if demo_mode:
+                # SUNUMU KURTARAN SAHTE RAPOR
+                st.subheader("📋 Stratejik Analiz Raporu (Demo)")
+                demo_text = f"Analiz tamamlandı. Seçmiş olduğunuz {ans_risk} risk profili ve {ans_sektor} sektörü odağında, portföyünüzün %40'ı hisse senedi fonları, %30'u değerli madenler ve %30'u likit fonlardan oluşacak şekilde bir Ak Portföy stratejisi önerilmektedir."
+                st.info(demo_text)
+            else:
+                try:
+                    # Kota yememek için modelleri her seferinde listelemiyoruz, doğrudan deniyoruz
+                    try:
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                    except:
+                        model = genai.GenerativeModel('gemini-pro')
+                    
+                    prompt = f"Analist olarak profesyonel rapor yaz: {amount} {ans_para}, Vade: {ans_vade}, Risk: {ans_risk}, Sektör: {ans_sektor}. Veriler: {df.to_string()}"
+                    res = model.generate_content(prompt)
+                    st.subheader("📋 Kişiselleştirilmiş Stratejik Analiz Raporu")
+                    st.info(res.text)
+                except Exception as e:
+                    if "429" in str(e):
+                        st.warning("⚠️ Sunucu şu an yoğun. Lütfen 30 saniye bekleyin veya yan menüden 'Sunum Kurtarıcı'yı açın.")
+                    else:
+                        st.error(f"Bağlantı sorunu: {str(e)[:50]}")
     else:
-        st.info(T['info'])
+        st.info("Lütfen kriterlerinizi belirleyip Analizi Başlat'a tıklayın.")
