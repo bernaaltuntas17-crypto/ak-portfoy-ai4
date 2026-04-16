@@ -45,7 +45,7 @@ lang = st.sidebar.selectbox("Dil Seçimi / Sprache", ["Türkçe", "Almanca"])
 T = {
     "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ" if lang == "Türkçe" else "AK PORTFÖY ANLAGEEMPFEHLUNG",
     "btn": "Analizi Başlat" if lang == "Türkçe" else "Analyse Starten",
-    "visual": "📊 Portföyün Görsel Analizi",
+    "visual": "Portföyün Görsel Analizi",
     "report_title": "📋 Kişiselleştirilmiş Stratejik Yatırım Raporu"
 }
 
