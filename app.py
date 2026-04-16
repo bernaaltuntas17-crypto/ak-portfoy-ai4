@@ -6,18 +6,18 @@ import os
 import glob
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
-# API anahtarını güvenli bir şekilde Secrets'tan alıyoruz
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-# Tarayıcı sekme başlığını güncelledik
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
-# Ak Portföy Renk Paleti ve Stil (CSS)
+# Ak Portföy Kırmızı Tema ve Stil (CSS)
 st.markdown("""
 <style>
-    [data-testid="stMetricValue"] { font-size: 24px; color: #FF5A00; }
+    /* Metrik değerlerini ve butonları kırmızı yapıyoruz */
+    [data-testid="stMetricValue"] { font-size: 24px; color: #D8232A; }
     .main { background-color: #f8f9fa; }
-    .stButton>button { background-color: #FF5A00; color: white; border-radius: 8px; width: 100%; border: none; }
+    .stButton>button { background-color: #D8232A; color: white; border-radius: 8px; width: 100%; border: none; font-weight: bold; }
+    .stButton>button:hover { background-color: #A01A1E; color: white; }
     .reportview-container .main .block-container { padding-top: 2rem; }
     h1, h2, h3 { color: #1e1e1e; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 </style>
@@ -56,21 +56,27 @@ else:
         "btn": "Analizi Başlat", "health": "Veri Kalitesi: Yüksek", "role": "Portföy Analisti"
     }
 
-# --- 4. GÜNCEL VE ŞIK BAŞLIK TASARIMI ---
-# Standart başlık yerine HTML ile özelleştirilmiş tasarım
+# --- 4. LOGO VE BAŞLIK TASARIMI (KIRMIZI TEMA) ---
+# Logoyu ve başlığı merkeze alıyoruz
+col_l, col_m, col_r = st.columns([1, 2, 1])
+with col_m:
+    # Ak Portföy Logosu (Resmi web sitesinden çekiyoruz)
+    st.image("https://www.akportfoy.com.tr/assets/img/logo.png", width=250)
+    
 st.markdown(f"""
-    <div style="text-align: center; padding: 20px;">
-        <h1 style="color: #FF5A00; font-family: 'Segoe UI'; margin-bottom: 0; font-weight: bold;">
+    <div style="text-align: center; padding-top: 10px;">
+        <h1 style="color: #D8232A; font-family: 'Segoe UI'; margin-bottom: 0; font-weight: bold; font-size: 2.5em;">
             {T['head']}
         </h1>
         <p style="color: #666; font-size: 1.2em; font-style: italic; margin-top: 5px;">
             {T['sub']}
         </p>
-        <hr style="border: 0.5px solid #FF5A00; width: 60%; margin: auto;">
+        <hr style="border: 1px solid #D8232A; width: 50%; margin: auto;">
     </div>
     """, unsafe_allow_html=True)
 
 if df is not None:
+    st.write("") # Boşluk
     col1, col2, col3, col4 = st.columns(4)
     top_fund = df.iloc[0]['Fon Adı'] if 'Fon Adı' in df.columns else "---"
     avg_risk = "Orta-Dengeli"
@@ -81,10 +87,9 @@ if df is not None:
     col4.metric("AI Status", "Active")
     st.divider()
 
-# --- 5. SOL PANEL (FİLTRELER VE PROFİL) ---
+# --- 5. SOL PANEL ---
 with st.sidebar:
-    st.image("https://www.akportfoy.com.tr/assets/img/logo.png", width=150)
-    st.header("Yatırım Tercihleri") # Yan menü başlığı
+    st.header("Yatırım Tercihleri")
     
     ans1 = st.selectbox(T['q1'], ["T+0", "T+1", "T+2"])
     ans2 = st.radio(T['q2'], ["TL", "USD", "EUR"])
@@ -106,7 +111,7 @@ if df is not None:
                 working_model = next((m for m in model_list if "flash" in m), model_list[0])
                 model = genai.GenerativeModel(working_model)
                 
-                prompt = f"Analist Rolü: {T['role']}. Veriler: {df.to_string()}. Profil: {ans1}, {ans2}, Vergi:{ans3}, Strateji:{ans4}. Profesyonel ve detaylı bir yatırım raporu oluştur."
+                prompt = f"Analist Rolü: {T['role']}. Veriler: {df.to_string()}. Profil: {ans1}, {ans2}, Vergi:{ans3}, Strateji:{ans4}. Profesyonel bir rapor oluştur."
                 res = model.generate_content(prompt)
                 
                 st.subheader("📋 Stratejik Analiz Raporu")
@@ -115,13 +120,13 @@ if df is not None:
                 if '1Y (%)' in df.columns:
                     st.subheader("📈 Getiri Analizi")
                     fig = px.bar(df, x='Kodu', y='1Y (%)', color='1Y (%)', 
-                                 labels={'1Y (%)': 'Yıllık Getiri (%)', 'Kodu': 'Fon Kodu'},
-                                 title="Yıllık Fon Performansı Karşılaştırması")
+                                 color_continuous_scale=['#FFCCCC', '#D8232A'], # Grafiği de kırmızı tonlu yaptık
+                                 title="Yıllık Fon Performansı")
                     st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Lütfen sol taraftan kriterlerinizi seçip analizi başlatın.")
-            
+    
     with tab2:
         st.dataframe(df, use_container_width=True)
 else:
-    st.error("Lütfen klasöre 'fonlar.csv' veya 'fonlar.xlsx' dosyasını ekleyin.")
+    st.error("Veri dosyası bulunamadı.")
