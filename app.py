@@ -14,7 +14,7 @@ API_KEY = st.secrets["GEMINI_API_KEY"]
 
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide")
 
-# Ak Portföy Kurumsal Teması
+# Ak Portföy Kurumsal Kırmızı & Siyah Teması
 st.markdown("""
 <style>
     .main { background-color: #ffffff; }
@@ -22,6 +22,7 @@ st.markdown("""
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] label, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 { color: #ffffff !important; }
     .stButton>button { background-color: #D8232A; color: white; border-radius: 8px; width: 100%; border: none; font-weight: bold; height: 3em; }
+    .stButton>button:hover { background-color: #ffffff; color: #D8232A; border: 1px solid #D8232A; }
     hr { border: 1px solid #D8232A !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -37,19 +38,19 @@ def load_data():
 
 df = load_data()
 
-# --- 3. DİL VE LOGO ---
+# --- 3. DİL DESTEĞİ ---
 lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
 
 if lang == "Almanca":
     T = {"head": "AK PORTFÖY ANLAGEEMPFEHLUNG", "btn": "Analyse Starten", "wait": "Strategie wird erstellt...", "report": "📋 Strategischer Rapor"}
-    sektor_opt = ["Technologie", "Nachhaltigkeit", "Rohstoffe", "Immobilien", "Keine Präferenz"]
+    sektor_opt = ["Technologie", "Nachhaltigkeit", "Rohstoffe", "Immobilien", "Egal"]
     risk_opt = ["Konservativ", "Ausgewogen", "Aggressiv"]
 else:
     T = {"head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ", "btn": "Analizi Başlat", "wait": "Analiz Yapılıyor...", "report": "📋 Stratejik Yatırım Raporu"}
     sektor_opt = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik", "Değerli Madenler", "Gayrimenkul", "Farketmez"]
     risk_opt = ["Korumalı", "Dengeli", "Agresif"]
 
-# Logo Alanı
+# Logo ve Başlık Alanı
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
     if os.path.exists("logo.png"): st.image("logo.png", width=300)
@@ -57,7 +58,7 @@ with col_m:
 
 st.markdown(f"<h1 style='text-align:center; color:#D8232A;'>{T['head']}</h1><hr>", unsafe_allow_html=True)
 
-# --- 4. YATIRIM TERCİHLERİ (EKSİKSİZ LİSTE) ---
+# --- 4. YATIRIM TERCİHLERİ (İSTEDİĞİN TÜM ALANLAR) ---
 with st.sidebar:
     st.header("Yatırım Tercihleri")
     ans_likidite = st.selectbox("Likidite Tercihi", ["T+0", "T+1", "T+2", "T+3"])
@@ -66,39 +67,46 @@ with st.sidebar:
     ans_vade = st.selectbox("Vade Beklentisi", ["0-1 yıl", "2-5 yıl", "10+ yıl"])
     ans_risk = st.select_slider("Risk Tercihi", options=risk_opt)
     ans_sektor = st.selectbox("Odak Sektör", sektor_opt)
-    amount_val = st.number_input("Yatırım Tutarı", min_value=1000, value=50000)
+    amount_val = st.number_input("Yatırım Tutarı (TL)", min_value=1000, value=50000)
     st.divider()
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 5. PROFESYONEL ANALİZ MOTORU ---
+# --- 5. HATA GEÇİRMEZ ANALİZ MOTORU ---
 if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
-            # SENİN İSTEDİĞİN DERİN ANALİZ TALİMATI
             prompt = f"""
-            Sen Ak Portföy Kıdemli Yatırım Uzmanısın. Müşterinin {amount_val} TL tutarı için rapor hazırla.
+            Sen Ak Portföy Kıdemli Yatırım Uzmanısın. Müşterinin {amount_val} TL yatırımı için rapor hazırla.
             Dil: {lang} | Risk: {ans_risk} | Sektör: {ans_sektor} | Vade: {ans_vade} | Likidite: {ans_likidite} | Faiz: {ans_faiz}
+            ELİNDEKİ FON VERİLERİ: {df.to_string()}
             
-            ELİNDEKİ VERİLER: {df.to_string()}
-            
-            ANALİZ GÖREVİN:
-            1. Bu tercihlere en uygun fonu neden seçtiğini teknik olarak açıkla.
-            2. Seçtiğin fonun getiri ve risk puanının müşterinin '{ans_risk}' profiliyle nasıl örtüştüğünü kanıtla.
-            3. '{ans_sektor}' sektörü yatırımının stratejik önemini belirt.
+            GÖREVİN: 
+            1. Bu tercihlere en uygun fonu neden seçtiğini detaylıca açıkla.
+            2. Seçtiğin fonun getiri/risk oranının müşterinin '{ans_risk}' profiline neden tam uyduğunu kanıtla.
+            3. Piyasa koşullarına göre sektörel analizini yap.
             """
+
+            # HATA ENGELLEYİCİ: Üç farklı adresi de tek tek deneyecek
+            endpoints = [
+                f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}",
+                f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={API_KEY}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+            ]
             
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+            success = False
+            for url in endpoints:
+                try:
+                    response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=20)
+                    if response.status_code == 200:
+                        ai_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                        st.subheader(T['report'])
+                        st.info(ai_text)
+                        st.balloons()
+                        success = True
+                        break
+                except: continue
             
-            try:
-                response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30)
-                if response.status_code == 200:
-                    ai_text = response.json()['candidates'][0]['content']['parts'][0]['text']
-                    st.subheader(T['report'])
-                    st.info(ai_text)
-                    st.balloons()
-                else:
-                    st.error(f"📡 Hata: {response.status_code}. Lütfen anahtarın AIzaSy ile başladığından emin ol.")
-            except Exception as e:
-                st.error(f"Bağlantı koptu: {e}")
+            if not success:
+                st.error("📡 Tüm bağlantı yolları denendi ama sonuç alınamadı. Lütfen API anahtarının doğruluğunu ve internetini kontrol et.")
 else:
     st.error("⚠️ Veri dosyası bulunamadı!")
