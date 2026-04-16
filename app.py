@@ -8,11 +8,10 @@ import glob
 # --- 1. KURUMSAL YAPILANDIRMA ---
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-  except Exception as e:
-    if "429" in str(e):
-        st.warning("⚠️ Yapay zeka servisimiz şu an yoğun. Lütfen 30 saniye bekleyip tekrar deneyin.")
-    else:
-        st.error(f"Teknik bir sorun oluştu: {str(e)}")
+except Exception:
+    st.error("API Anahtarı bulunamadı!")
+
+st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
 # Ak Portföy KIRMIZI VE KOYU PANEL Teması
 st.markdown("""
@@ -39,7 +38,7 @@ def load_and_clean_data():
             df = pd.read_excel(f) if f.endswith('.xlsx') else pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
             df.columns = [c.strip() for c in df.columns] 
             return df
-        except: continue
+        except Exception: continue
     return None
 
 df = load_and_clean_data()
@@ -96,7 +95,7 @@ else:
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
     try: st.image("logo.png", width=300)
-    except: st.write("")
+    except Exception: st.write("")
 
 st.markdown(f"""
     <div style="text-align: center; padding-bottom: 20px;">
@@ -125,7 +124,7 @@ if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             try:
-                # MODEL SEÇİMİ: Çalışan ilk modeli otomatik bulur
+                # Modeli otomatik bulur (Hata payını sıfırlar)
                 model_names = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 working_model = next((m for m in model_names if "flash" in m), model_names[0])
                 model = genai.GenerativeModel(working_model)
@@ -133,16 +132,21 @@ if df is not None:
                 prompt = f"""
                 {T['prompt_lang']}
                 Role: Senior Portfolio Manager at Ak Portföy. 
-                Data Analysis: {df.to_string()}
-                Client Profile: {amount} {ans_para}, Liquidity: {ans_likidite}, 
+                Data: {df.to_string()}
+                Profile: {amount} {ans_para}, Liquidity: {ans_likidite}, 
                 Interest: {ans_faiz}, Period: {ans_vade}, Risk: {ans_risk}, Sector: {ans_sektor}.
                 Generate a professional investment report.
                 """
                 res = model.generate_content(prompt)
                 st.subheader(T['report_head'])
                 st.info(res.text)
+
             except Exception as e:
-                st.error(f"Teknik bir sorun oluştu: {str(e)}")
-                st.warning("Lütfen API anahtarınızı ve internet bağlantınızı kontrol edip tekrar deneyin.")
+                # 429 KOTA HATASI VE DİĞERLERİ İÇİN ŞIK UYARI
+                if "429" in str(e):
+                    st.warning("⚠️ Yapay zeka servisimiz şu an yoğun. Lütfen 30 saniye bekleyip tekrar deneyin.")
+                else:
+                    st.error(f"Teknik bir sorun oluştu. Lütfen tekrar deneyin.")
+                    st.write(f"Detay: {str(e)}")
     else:
         st.info(T['info'])
