@@ -10,17 +10,7 @@ genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
-# Ak Portföy KIRMIZI Tema ve Stil
-st.markdown("""
-<style>
-    [data-testid="stMetricValue"] { font-size: 24px; color: #D8232A; }
-    .main { background-color: #f8f9fa; }
-    .stButton>button { background-color: #D8232A; color: white; border-radius: 8px; width: 100%; border: none; font-weight: bold; height: 3em; }
-    .stButton>button:hover { background-color: #A01A1E; color: white; }
-    h1, h2, h3 { color: #1e1e1e; font-family: 'Segoe UI', sans-serif; }
-    hr { border: 1px solid #D8232A !important; }
-    .stRadio > label, .stSelectbox > label { font-weight: bold; color: #1e1e1e; }
-</style>
+# Ak Portföy KIRMIZI VE KOYU PANEL Teması (CSS)
 st.markdown("""
 <style>
     /* Ana Sayfa Arka Planı */
@@ -40,7 +30,7 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* Metrik değerleri (Kırmızı) */
+    /* Metrik değerleri (Akbank Kırmızısı) */
     [data-testid="stMetricValue"] { font-size: 24px; color: #D8232A; }
 
     /* Buton Tasarımı */
@@ -55,10 +45,12 @@ st.markdown("""
     }
     .stButton>button:hover {
         background-color: #ffffff;
-        color: #D8232A; /* Üzerine gelince beyaz üstü kırmızı yazı */
+        color: #D8232A;
+        border: 1px solid #D8232A;
     }
 </style>
 """, unsafe_allow_html=True)
+
 # --- 2. VERİ MOTORU ---
 def load_and_clean_data():
     files = glob.glob("fonlar*") + glob.glob("*.csv") + glob.glob("*.xlsx")
@@ -72,7 +64,7 @@ def load_and_clean_data():
 
 df = load_and_clean_data()
 
-# --- 3. DİL SEÇİMİ ---
+# --- 3. DİL VE LOGO ---
 lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
 T = {
     "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ" if lang == "Türkçe" else "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
@@ -80,13 +72,10 @@ T = {
     "btn": "Analizi Başlat" if lang == "Türkçe" else "Analyse Starten"
 }
 
-# --- 4. LOGO VE BAŞLIK ---
 col_l, col_m, col_r = st.columns([1, 2, 1])
 with col_m:
-    try:
-        st.image("logo.png", width=300)
-    except:
-        st.write("Logo Yükleniyor...")
+    try: st.image("logo.png", width=300)
+    except: st.write("Logo Yükleniyor...")
 
 st.markdown(f"""
     <div style="text-align: center;">
@@ -96,26 +85,15 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-# --- 5. YENİ YATIRIM TERCİHLERİ (SOL PANEL) ---
+# --- 4. YATIRIM TERCİHLERİ ---
 with st.sidebar:
     st.header("Yatırım Tercihleri")
-    
-    # 1. Likidite
     ans_likidite = st.selectbox("Likidite Tercihi", ["T+0", "T+1", "T+2", "T+3"])
-    
-    # 2. Para Birimi
     ans_para = st.radio("Para Birimi", ["Türk Lirası (TL)", "ABD Doları (USD)", "Euro (EUR)", "Pound (GBP)"])
-    
-    # 3. Faiz Hassasiyeti
     ans_faiz = st.radio("Faiz Hassasiyeti", ["Faizsiz", "Faizli"])
-    
-    # 4. Vade Süresi
     ans_vade = st.selectbox("Vade Süresi Tercihi", ["0-1 yıl", "2-5 yıl", "10+ yıl"])
-    
-    # 5. Risk Tercihi
     ans_risk = st.select_slider("Risk Tercihi", options=["Korumalı", "Dengeli", "Agresif"])
     
-    # 6. Sektör Tercihi
     sektor_options = [
         "Teknoloji ve Yapay Zeka (Yüksek büyüme odaklı)",
         "Sürdürülebilirlik ve Yeşil Enerji (ESG)",
@@ -124,46 +102,25 @@ with st.sidebar:
         "Tercih Ettiğim Bir Sektör Yok"
     ]
     ans_sektor = st.selectbox("Yatırım için Tercih Edilecek Sektör", sektor_options)
-    
     amount = st.number_input("Yatırım Tutarı", min_value=1000, value=50000)
     
     st.divider()
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 6. KPI VE ANALİZ ---
+# --- 5. ANALİZ VE RAPOR ---
 if df is not None:
     st.write("")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("En İyi Fon", df.iloc[0]['Fon Adı'] if 'Fon Adı' in df.columns else "---")
-    c2.metric("Risk Skoru", ans_risk)
+    c2.metric("Risk", ans_risk)
     c3.metric("Vade", ans_vade)
-    c4.metric("Sektör", "Seçildi")
+    c4.metric("AI Status", "Active")
     st.divider()
 
 if analyze_btn and df is not None:
-    with st.spinner('Yapay Zeka Strateji Oluşturuyor...'):
+    with st.spinner('Strateji Oluşturuluyor...'):
         model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        # Yapay zekaya gönderilen detaylı komut (Prompt)
-        prompt = f"""
-        Bir Portföy Analisti olarak şu kriterlere göre profesyonel rapor oluştur:
-        Yatırım Tutarı: {amount} {ans_para}
-        Likidite: {ans_likidite}
-        Vade: {ans_vade}
-        Risk Seviyesi: {ans_risk}
-        Faiz Hassasiyeti: {ans_faiz}
-        Tercih Edilen Sektör: {ans_sektor}
-        
-        Mevcut Fon Verileri: {df.to_string()}
-        
-        Lütfen bu kriterlere en uygun Ak Portföy fonlarını öner ve nedenlerini açıkla.
-        """
-        
+        prompt = f"Analist Rolü. Veriler: {df.to_string()}. Profil: {ans_likidite}, {ans_para}, {ans_faiz}, {ans_vade}, {ans_risk}, {ans_sektor}. Rapor yaz."
         res = model.generate_content(prompt)
         st.subheader("📋 Kişiselleştirilmiş Stratejik Analiz Raporu")
         st.info(res.text)
-
-        # Grafik
-        if '1Y (%)' in df.columns:
-            fig = px.bar(df, x='Kodu', y='1Y (%)', color='1Y (%)', color_continuous_scale=['#FFCCCC', '#D8232A'])
-            st.plotly_chart(fig, use_container_width=True)
