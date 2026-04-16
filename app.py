@@ -6,11 +6,14 @@ import os
 import glob
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+try:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+except:
+    st.error("API Anahtarı bulunamadı! Lütfen Streamlit Secrets ayarlarını kontrol edin.")
 
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
-# Ak Portföy KIRMIZI VE KOYU PANEL Teması (CSS)
+# Ak Portföy KIRMIZI VE KOYU PANEL Teması
 st.markdown("""
 <style>
     .main { background-color: #ffffff; }
@@ -56,7 +59,7 @@ if lang == "Almanca":
         "risk": "Risikopräferenz",
         "sektor": "Bevorzugter Sektor",
         "tutar": "Investitionsbetrag",
-        "wait": "Strategie wird erstellt...",
+        "wait": "KI erstellt die Strategie...",
         "report_head": "📋 Strategischer Analysebericht",
         "info": "Bitte wählen Sie Ihre Kriterien.",
         "prompt_lang": "Write the entire report in GERMAN."
@@ -78,7 +81,7 @@ else:
         "risk": "Risk Tercihi",
         "sektor": "Yatırım için Tercih Edilecek Sektör",
         "tutar": "Yatırım Tutarı",
-        "wait": "Strateji Oluşturuluyor...",
+        "wait": "Yapay Zeka Strateji Oluşturuyor...",
         "report_head": "📋 Kişiselleştirilmiş Stratejik Analiz Raporu",
         "info": "Lütfen sol taraftan kriterlerinizi belirleyip Analizi Başlat'a tıklayın.",
         "prompt_lang": "Raporun tamamını TÜRKÇE yaz."
@@ -116,32 +119,29 @@ with st.sidebar:
     st.divider()
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 6. ANALİZ VE RAPOR (HATA GİDERİLMİŞ KISIM) ---
+# --- 6. ANALİZ VE RAPOR ---
 if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             try:
-                # Modeli daha sağlam bir şekilde seçiyoruz
-                model = genai.GenerativeModel('models/gemini-1.5-flash') 
+                # MODEL SEÇİMİ: Çalışan ilk modeli otomatik bulur
+                model_names = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                working_model = next((m for m in model_names if "flash" in m), model_names[0])
+                model = genai.GenerativeModel(working_model)
                 
                 prompt = f"""
                 {T['prompt_lang']}
-                Role: Financial Analyst. 
-                Data: {df.to_string()}
-                User Profile: Amount: {amount}, Currency: {ans_para}, Liquidity: {ans_likidite}, 
+                Role: Senior Portfolio Manager at Ak Portföy. 
+                Data Analysis: {df.to_string()}
+                Client Profile: {amount} {ans_para}, Liquidity: {ans_likidite}, 
                 Interest: {ans_faiz}, Period: {ans_vade}, Risk: {ans_risk}, Sector: {ans_sektor}.
-                Provide a professional investment strategy.
+                Generate a professional investment report.
                 """
                 res = model.generate_content(prompt)
                 st.subheader(T['report_head'])
                 st.info(res.text)
             except Exception as e:
-                # Eğer hala bulamazsa alternatif isim dene
-                try:
-                    model = genai.GenerativeModel('gemini-pro')
-                    res = model.generate_content(prompt)
-                    st.info(res.text)
-                except:
-                    st.error("Yapay zeka servisinde geçici bir yoğunluk var, lütfen tekrar deneyin.")
+                st.error(f"Teknik bir sorun oluştu: {str(e)}")
+                st.warning("Lütfen API anahtarınızı ve internet bağlantınızı kontrol edip tekrar deneyin.")
     else:
         st.info(T['info'])
