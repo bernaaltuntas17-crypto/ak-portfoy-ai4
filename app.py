@@ -77,12 +77,17 @@ with st.sidebar:
     st.divider()
     analyze_btn = st.button(T['btn'], type="primary")
 
-# --- 5. ANALİZ VE RAPOR ---
+# --- 6. ANALİZ VE RAPOR ---
 if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # İLK DENEME: En yeni ve hızlı model
+                try:
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                except:
+                    # B PLANI: Flash çalışmazsa eski ama en sağlam modeli (Pro) dene
+                    model = genai.GenerativeModel('gemini-pro')
                 
                 # YAPAY ZEKAYA GİDEN ÇOK DETAYLI ANALİZ TALİMATI
                 prompt = f"""
@@ -101,12 +106,10 @@ if df is not None:
                 {df.to_string()}
                 
                 RAPORDA ŞU BAŞLIKLAR KESİNLİKLE OLMALIDIR:
-                1. Müşteri Profili ve Strateji Özeti: Müşterinin tercihlerinin ne anlama geldiğini açıkla.
-                2. Önerilen Fonlar: Yukarıdaki veri setinden müşterinin profiline EN UYGUN Ak Portföy fonlarını seç ve isimlerini belirt.
-                3. Neden Bu Fonlar Seçildi?: Seçilen her bir fonun, müşterinin likidite ({ans_likidite}), faiz ({ans_faiz}) ve risk ({ans_risk}) tercihleriyle nasıl tam olarak eşleştiğini detaylandırarak açıkla.
-                4. Neden Bu Fonlara Yatırım Yapılmalı?: Müşterinin seçtiği sektörün ({ans_sektor}) piyasa potansiyelini, risk-getiri dengesini ve gelecekteki beklentileri finansal verilerle yorumla.
-                
-                Sahte bilgiler üretme, sadece elindeki verileri ve gerçekçi finansal analizleri kullan.
+                1. Müşteri Profili ve Strateji Özeti
+                2. Önerilen Fonlar
+                3. Neden Bu Fonlar Seçildi?
+                4. Neden Bu Fonlara Yatırım Yapılmalı?
                 """
                 
                 res = model.generate_content(prompt)
@@ -122,8 +125,9 @@ if df is not None:
                 if "429" in error_str or "quota" in error_str.lower():
                     st.warning("⚠️ Sunucu çok yoğun! Lütfen 30 saniye bekleyip tekrar Analizi Başlat'a tıklayın.")
                 else:
-                    st.error(f"📡 API Bağlantı Sorunu: Lütfen verilerinizi kontrol edip tekrar deneyin.")
+                    # ŞİMDİ GERÇEK HATAYI EKRANDA GÖRECEĞİZ
+                    st.error(f"📡 Teknik Hata Detayı: {error_str}")
     else:
         st.info(T['info'])
 else:
-    st.error("⚠️ Veri dosyası (fonlar.csv veya fonlar.xlsx) bulunamadı! Lütfen dosyayı yükleyin.")
+    st.error("⚠️ Veri dosyası bulunamadı!")
