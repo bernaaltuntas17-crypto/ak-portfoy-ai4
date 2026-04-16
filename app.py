@@ -6,10 +6,11 @@ import os
 import glob
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
-
+# API anahtarını güvenli bir şekilde Secrets'tan alıyoruz
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-st.set_page_config(page_title="Ak Portföy | Analiz Platformu", layout="wide", initial_sidebar_state="expanded")
+# Tarayıcı sekme başlığını güncelledik
+st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
 # Ak Portföy Renk Paleti ve Stil (CSS)
 st.markdown("""
@@ -28,8 +29,7 @@ def load_and_clean_data():
     for f in files:
         try:
             df = pd.read_excel(f) if f.endswith('.xlsx') else pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
-            # Veri Temizliği (Data Health)
-            df.columns = [c.strip() for c in df.columns] # Başlıktaki boşlukları siler
+            df.columns = [c.strip() for c in df.columns] 
             return df
         except: continue
     return None
@@ -41,26 +41,37 @@ lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
 
 if lang == "Almanca":
     T = {
-        "head": "Ak Portföy Management", "sub": "KI-Gesteuerte Investment-Plattform",
+        "head": "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG", 
+        "sub": "KI-Gesteuerte Investment- und Analyseplattform",
         "kpi1": "Bester Fonds", "kpi2": "Risiko-Score", "kpi3": "Datenstatus",
         "q1": "Liquidität", "q2": "Währung", "q3": "Steuervorteile", "q4": "Strategie",
         "btn": "Analyse Starten", "health": "Datenqualität: Hoch", "role": "Portfolio Analyst"
     }
 else:
     T = {
-        "head": "Ak Portföy Yönetimi", "sub": "Yapay Zeka Destekli Analiz Platformu",
+        "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ", 
+        "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi",
         "kpi1": "En İyi Fon", "kpi2": "Risk Skoru", "kpi3": "Veri Sağlığı",
         "q1": "Likidite", "q2": "Para Birimi", "q3": "Vergi Önceliği", "q4": "Yatırım Stratejisi",
         "btn": "Analizi Başlat", "health": "Veri Kalitesi: Yüksek", "role": "Portföy Analisti"
     }
 
-# --- 4. DASHBOARD ÜST PANEL (KPI CARDS) ---
-st.title(f"🟠 {T['head']}")
-st.caption(T['sub'])
+# --- 4. GÜNCEL VE ŞIK BAŞLIK TASARIMI ---
+# Standart başlık yerine HTML ile özelleştirilmiş tasarım
+st.markdown(f"""
+    <div style="text-align: center; padding: 20px;">
+        <h1 style="color: #FF5A00; font-family: 'Segoe UI'; margin-bottom: 0; font-weight: bold;">
+            {T['head']}
+        </h1>
+        <p style="color: #666; font-size: 1.2em; font-style: italic; margin-top: 5px;">
+            {T['sub']}
+        </p>
+        <hr style="border: 0.5px solid #FF5A00; width: 60%; margin: auto;">
+    </div>
+    """, unsafe_allow_html=True)
 
 if df is not None:
     col1, col2, col3, col4 = st.columns(4)
-    # Excel'den otomatik veri çekimi
     top_fund = df.iloc[0]['Fon Adı'] if 'Fon Adı' in df.columns else "---"
     avg_risk = "Orta-Dengeli"
     
@@ -72,8 +83,8 @@ if df is not None:
 
 # --- 5. SOL PANEL (FİLTRELER VE PROFİL) ---
 with st.sidebar:
-    st.image("https://www.akportfoy.com.tr/assets/img/logo.png", width=150) # Varsa logo linki
-    st.header(T['head'])
+    st.image("https://www.akportfoy.com.tr/assets/img/logo.png", width=150)
+    st.header("Yatırım Tercihleri") # Yan menü başlığı
     
     ans1 = st.selectbox(T['q1'], ["T+0", "T+1", "T+2"])
     ans2 = st.radio(T['q2'], ["TL", "USD", "EUR"])
@@ -90,23 +101,22 @@ if df is not None:
     
     with tab1:
         if analyze_btn:
-            with st.spinner('Analiz ediliyor...'):
-                # AI Modeli Çağrısı
+            with st.spinner('Yapay zeka verileri analiz ediyor...'):
                 model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 working_model = next((m for m in model_list if "flash" in m), model_list[0])
                 model = genai.GenerativeModel(working_model)
                 
-                prompt = f"Analist Rolü: {T['role']}. Veriler: {df.to_string()}. Profil: {ans1}, {ans2}, Vergi:{ans3}, Strateji:{ans4}. Profesyonel bir rapor oluştur."
+                prompt = f"Analist Rolü: {T['role']}. Veriler: {df.to_string()}. Profil: {ans1}, {ans2}, Vergi:{ans3}, Strateji:{ans4}. Profesyonel ve detaylı bir yatırım raporu oluştur."
                 res = model.generate_content(prompt)
                 
-                # Rapor Alanı
                 st.subheader("📋 Stratejik Analiz Raporu")
                 st.info(res.text)
                 
-                # Dinamik Grafik (VEXEL benzeri)
                 if '1Y (%)' in df.columns:
                     st.subheader("📈 Getiri Analizi")
-                    fig = px.bar(df, x='Kodu', y='1Y (%)', color='1Y (%)', title="Yıllık Fon Performansı")
+                    fig = px.bar(df, x='Kodu', y='1Y (%)', color='1Y (%)', 
+                                 labels={'1Y (%)': 'Yıllık Getiri (%)', 'Kodu': 'Fon Kodu'},
+                                 title="Yıllık Fon Performansı Karşılaştırması")
                     st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Lütfen sol taraftan kriterlerinizi seçip analizi başlatın.")
