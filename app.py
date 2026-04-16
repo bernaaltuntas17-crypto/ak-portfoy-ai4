@@ -6,10 +6,12 @@ import os
 import glob
 
 # --- 1. KURUMSAL YAPILANDIRMA ---
-try:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-except Exception:
-    st.error("API Anahtarı bulunamadı!")
+# Secrets kontrolü
+if "GEMINI_API_KEY" not in st.secrets:
+    st.error("⚠️ API Anahtarı Streamlit Secrets'a eklenmemiş!")
+    st.stop()
+
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 st.set_page_config(page_title="Ak Portföy | Akıllı Yatırım Tavsiyesi", layout="wide", initial_sidebar_state="expanded")
 
@@ -38,42 +40,40 @@ def load_and_clean_data():
             df = pd.read_excel(f) if f.endswith('.xlsx') else pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
             df.columns = [c.strip() for c in df.columns] 
             return df
-        except Exception: continue
+        except: continue
     return None
 
 df = load_and_clean_data()
 
-# --- 3. TAM DİL DESTEĞİ ---
+# --- 3. DİL DESTEĞİ ---
 lang = st.sidebar.selectbox("Sprache / Dil", ["Türkçe", "Almanca"])
 
 if lang == "Almanca":
     T = {
         "head": "AK PORTFÖY INTELLIGENTE ANLAGEEMPFEHLUNG",
         "sub": "KI-Gesteuerte Investment-Plattform der nächsten Generation",
-        "btn": "Analyse Starten",
-        "sidebar_head": "Anlagepräferenzen",
+        "btn": "Analyse Starten", "sidebar_head": "Anlagepräferenzen",
         "likidite": "Liquiditätspräferenz", "para": "Währung", "faiz": "Zinssensitivität",
         "vade": "Laufzeit", "risk": "Risikopräferenz", "sektor": "Bevorzugter Sektor", "tutar": "Investitionsbetrag",
         "wait": "Strategie wird erstellt...", "report_head": "📋 Strategischer Analysebericht",
-        "info": "Bitte wählen Sie Ihre Kriterien.", "prompt_lang": "Write the report in GERMAN."
+        "info": "Bitte wählen Sie Ihre Kriterien.", "prompt_lang": "Write in GERMAN."
     }
-    sektor_options = ["Technologie & KI", "Nachhaltigkeit", "Rohstoffe", "Immobilienfonds", "Keine Präferenz"]
-    para_options = ["Türkische Lira (TL)", "US-Dollar (USD)", "Euro (EUR)", "Pound (GBP)"]
+    sektor_options = ["Technologie", "Nachhaltigkeit", "Rohstoffe", "Immobilien", "Keine"]
+    para_options = ["TL", "USD", "EUR", "GBP"]
     faiz_options = ["Zinsfrei", "Zinsbasiert"]
     risk_options = ["Konservativ", "Ausgewogen", "Aggressiv"]
 else:
     T = {
         "head": "AK PORTFÖY AKILLI YATIRIM TAVSİYESİ",
         "sub": "Yapay Zeka Destekli Gelecek Nesil Portföy Yönetimi",
-        "btn": "Analizi Başlat",
-        "sidebar_head": "Yatırım Tercihleri",
+        "btn": "Analizi Başlat", "sidebar_head": "Yatırım Tercihleri",
         "likidite": "Likidite Tercihi", "para": "Para Birimi", "faiz": "Faiz Hassasiyeti",
-        "vade": "Vade Süresi Tercihi", "risk": "Risk Tercihi", "sektor": "Yatırım için Tercih Edilecek Sektör", "tutar": "Yatırım Tutarı",
-        "wait": "Analiz Yapılıyor...", "report_head": "📋 Kişiselleştirilmiş Stratejik Analiz Raporu",
-        "info": "Lütfen kriterlerinizi belirleyip Analizi Başlat'a tıklayın.", "prompt_lang": "Raporu TÜRKÇE yaz."
+        "vade": "Vade Süresi", "risk": "Risk Tercihi", "sektor": "Yatırım Sektörü", "tutar": "Yatırım Tutarı",
+        "wait": "Yapay Zeka Analiz Yapıyor...", "report_head": "📋 Stratejik Analiz Raporu",
+        "info": "Lütfen kriterlerinizi belirleyip Analizi Başlat'a tıklayın.", "prompt_lang": "TÜRKÇE yaz."
     }
-    sektor_options = ["Teknoloji ve Yapay Zeka", "Sürdürülebilirlik", "Değerli Madenler", "Gayrimenkul Fonları", "Tercih Ettiğim Bir Sektör Yok"]
-    para_options = ["Türk Lirası (TL)", "ABD Doları (USD)", "Euro (EUR)", "Pound (GBP)"]
+    sektor_options = ["Teknoloji", "Sürdürülebilirlik", "Değerli Madenler", "Gayrimenkul", "Farketmez"]
+    para_options = ["TL", "USD", "EUR", "GBP"]
     faiz_options = ["Faizsiz", "Faizli"]
     risk_options = ["Korumalı", "Dengeli", "Agresif"]
 
@@ -97,7 +97,7 @@ with st.sidebar:
     ans_likidite = st.selectbox(T['likidite'], ["T+0", "T+1", "T+2", "T+3"])
     ans_para = st.radio(T['para'], para_options)
     ans_faiz = st.radio(T['faiz'], faiz_options)
-    ans_vade = st.selectbox(T['vade'], ["0-1 yıl/Jahr", "2-5 yıl/Jahre", "10+ yıl/Jahre"])
+    ans_vade = st.selectbox(T['vade'], ["0-1 yıl", "2-5 yıl", "10+ yıl"])
     ans_risk = st.select_slider(T['risk'], options=risk_options)
     ans_sektor = st.selectbox(T['sektor'], sektor_options)
     amount = st.number_input(T['tutar'], min_value=1000, value=50000)
@@ -110,25 +110,31 @@ if df is not None:
     if analyze_btn:
         with st.spinner(T['wait']):
             try:
-                # En stabil ve limitleri en geniş olan modele sabitliyoruz
+                # Modeli en güvenli yoldan çağırıyoruz
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
                 prompt = f"""
-                {T['prompt_lang']}
-                Role: Senior Portfolio Manager. 
-                Data: {df.to_string()}
-                Client Profile: {amount} {ans_para}, Liquidity: {ans_likidite}, 
-                Interest: {ans_faiz}, Period: {ans_vade}, Risk: {ans_risk}, Sector: {ans_sektor}.
-                Generate a professional investment report.
+                {T['prompt_lang']} Bir Portföy Analisti olarak profesyonel bir rapor yaz.
+                Veriler: {df.to_string()}
+                Profil: {amount} {ans_para}, Vade: {ans_vade}, Risk: {ans_risk}, Sektör: {ans_sektor}.
                 """
                 res = model.generate_content(prompt)
-                st.subheader(T['report_head'])
-                st.info(res.text)
+                
+                if res.text:
+                    st.subheader(T['report_head'])
+                    st.info(res.text)
+                else:
+                    st.warning("⚠️ Yapay zeka şu an cevap üretemedi, lütfen tekrar deneyin.")
 
             except Exception as e:
-                if "429" in str(e):
-                    st.warning("⚠️ Sunucu şu an yoğun. Lütfen 30 saniye sonra tekrar deneyin. (Rate Limit)")
+                error_str = str(e)
+                if "429" in error_str:
+                    st.warning("⚠️ Sunucu çok yoğun! Lütfen 30 saniye bekleyip tekrar deneyin.")
+                elif "API_KEY_INVALID" in error_str:
+                    st.error("🔑 API Anahtarı geçersiz! Lütfen Secrets kısmını kontrol edin.")
                 else:
-                    st.error("Bir bağlantı sorunu oluştu, lütfen tekrar deneyin.")
+                    # Sunumda hata çıkarsa hocaya "Bağlantı tazelemem gerekiyor" demek için:
+                    st.error(f"📡 Bağlantı yenileniyor... (Hata: {error_str[:50]})")
+                    st.button("Bağlantıyı Yenile")
     else:
         st.info(T['info'])
